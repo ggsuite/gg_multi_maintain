@@ -6,14 +6,14 @@
 
 import '../../bin/gg_multi_maintain.dart';
 
-import 'package:test/test.dart' show expect, group, test;
+import 'package:test/test.dart' show contains, expect, group, test;
 
 void main() {
   group('bin/gg_multi_maintain.dart', () {
-    test('runs my-command', () async {
+    test('runs maintain', () async {
       final messages = <String>[];
-      await run(args: ['my-command', '-i', 'hello'], ggLog: messages.add);
-      expect(messages, ['hello']);
+      await run(args: ['maintain'], ggLog: messages.add);
+      expect(messages.single, contains('Choose at least one task'));
     });
   });
 }

@@ -13,5 +13,7 @@ dependencies:
   gg_args: ^3.2.0
   gg_log: ^1.2.0
 dev_dependencies:
+  dna_ggsuite: ^1.0.0
+  helix: ^1.14.0
   lints: ^6.1.0
   test: ^1.33.0

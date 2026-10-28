@@ -9,11 +9,11 @@ import 'package:test/test.dart' show contains, expect, group, test;
 
 void main() {
   group('GgMultiMaintain', () {
-    test('offers my-command', () {
+    test('offers maintain', () {
       final command = GgMultiMaintain.example();
       expect(command.name, 'gg_multi_maintain');
       expect(command.description, contains('gg_multi_maintain'));
-      expect(command.subcommands.keys, ['my-command']);
+      expect(command.subcommands.keys, ['maintain']);
     });
   });
 }

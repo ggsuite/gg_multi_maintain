@@ -7,13 +7,13 @@
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 
-import 'commands/my_command.dart';
+import 'commands/do_maintain.dart';
 
 /// The root command of gg_multi_maintain.
 class GgMultiMaintain extends Command<dynamic> {
   /// Constructor
   GgMultiMaintain({required this.ggLog}) {
-    addSubcommand(MyCommand(ggLog: ggLog));
+    addSubcommand(DoMaintain(ggLog: ggLog));
   }
 
   /// A command that logs nothing; tests pass what they care about.
@@ -26,8 +26,8 @@ class GgMultiMaintain extends Command<dynamic> {
 
   @override
   final description =
-      'The command line interface of '
-      'gg_multi_maintain.';
+      'Runs maintenance tasks in all ocean repos of a gg workspace '
+      '(gg_multi_maintain).';
 
   /// The log function.
   final GgLog ggLog;

@@ -57,4 +57,21 @@ void main() {
       });
     });
   });
+
+  group('FlutterInShellProcessWrapper', () {
+    test('runs flutter through the shell', () async {
+      final result = await const FlutterInShellProcessWrapper().run('flutter', [
+        '--version',
+      ], workingDirectory: dir.path);
+      expect(result.exitCode, 0);
+      expect('${result.stdout}', contains('Flutter'));
+    });
+
+    test('runs other executables as given', () async {
+      final result = await const FlutterInShellProcessWrapper().run('git', [
+        '--version',
+      ], workingDirectory: dir.path);
+      expect('${result.stdout}', startsWith('git version'));
+    });
+  });
 }

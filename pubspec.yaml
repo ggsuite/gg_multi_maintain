@@ -1,0 +1,17 @@
+name: gg_multi_maintain
+description: "Runs maintenance tasks like SDK, DNA and dependency upgrades in all ocean repos in parallel and publishes every changed repo."
+version: 0.0.1
+repository: https://github.com/ggsuite/gg_multi_maintain.git
+
+environment:
+  sdk: ">=3.13.0 <4.0.0"
+
+executables:
+  gg_multi_maintain:
+dependencies:
+  args: ^2.7.0
+  gg_args: ^3.2.0
+  gg_log: ^1.2.0
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.33.0

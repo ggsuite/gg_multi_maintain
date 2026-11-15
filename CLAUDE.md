@@ -14,13 +14,20 @@ registers the command under `gg do`.
   first) are published or unchanged, up to `--jobs` at a time. A failure
   blocks its dependents only. There are no waves: a fast branch of the graph
   never waits for a slow one.
+- **A run with problems leaves a report.** `Maintainer.run` writes
+  `<run folder>/report.txt` (`MaintainReport.text`, the summary without
+  colors, headed by the run id) when a repo failed or was blocked, and logs
+  its path. Nobody watches a nightly run; the file is what the developer
+  reads in the morning.
 - **gg does the release.** Commit and publish are `gg one do commit` and
   `gg one do publish` (`DoCommit`, `DoPublish`) called in-process with every
   answer given (`askBeforePublishing: false`, `upgrade: false`, version
   increment, merge message) — no prompt may appear, there is no terminal per
   repo. npm publishes run one at a time because of OTP prompts.
 - **A task flag is required.** `--upgrade-sdk`, `--upgrade-deps [--major]`,
-  `--upgrade-dna` or `--all`. New tasks are a `MaintainTask` value plus a
+  `--upgrade-dna`, `--all` or `--nightly` (= `--upgrade-deps --major`, the
+  run a computer of its own starts every night; combinable with the other
+  task flags). New tasks are a `MaintainTask` value plus a
   `RepoTask` in `RepoMaintainer._defaultTasks`; they only change files, the
   pipeline detects and releases the changes.
 - **Unchanged is decided by git.** Lock files and `.gg/` do not count. The

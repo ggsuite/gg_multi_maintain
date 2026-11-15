@@ -72,6 +72,38 @@ void main() {
       ]);
     });
 
+    test('lines without colors and the text of the report file', () {
+      final report = MaintainReport(
+        results: [
+          result('a', RepoOutcome.published, '1.0.1'),
+          RepoResult(
+            repo: OceanRepo.example(name: 'b'),
+            outcome: RepoOutcome.failed,
+            detail: 'tests failed',
+            step: 'commit',
+          ),
+        ],
+      );
+      expect(report.lines(colored: false), [
+        'Published (1):',
+        '  ggsuite/a: 1.0.1',
+        'Failed (1):',
+        '  ggsuite/b: commit: tests failed',
+      ]);
+      expect(
+        report.text(runId: '2026_11_15_020000'),
+        [
+          'gg do maintain, run 2026_11_15_020000',
+          '',
+          'Published (1):',
+          '  ggsuite/a: 1.0.1',
+          'Failed (1):',
+          '  ggsuite/b: commit: tests failed',
+          '',
+        ].join('\n'),
+      );
+    });
+
     test('has no problems when nothing failed', () {
       expect(MaintainReport.example().hasProblems, isFalse);
       expect(

@@ -28,21 +28,33 @@ class MaintainReport {
       results.any((result) => !result.outcome.letsDependentsRun);
 
   // ...........................................................................
-  /// Returns the lines of the summary.
-  List<String> lines() {
+  /// Returns the lines of the summary, the headings in color unless
+  /// [colored] is false.
+  List<String> lines({bool colored = true}) {
     final lines = <String>[];
     for (final outcome in RepoOutcome.values) {
       final group =
           results.where((result) => result.outcome == outcome).toList()
             ..sort((a, b) => a.repo.key.compareTo(b.repo.key));
       if (group.isEmpty) continue;
-      lines.add(_color(outcome)('${outcome.title} (${group.length}):'));
+      final color = colored ? _color(outcome) : (Object text) => '$text';
+      lines.add(color('${outcome.title} (${group.length}):'));
       for (final result in group) {
         lines.addAll(_linesOf(result));
       }
     }
     return lines;
   }
+
+  // ...........................................................................
+  /// Returns the text of the report file a run with problems leaves for the
+  /// developer: what failed in which step, and where clone and log are.
+  String text({required String runId}) => [
+    'gg do maintain, run $runId',
+    '',
+    ...lines(colored: false),
+    '',
+  ].join('\n');
 
   // ...........................................................................
   List<String> _linesOf(RepoResult result) {

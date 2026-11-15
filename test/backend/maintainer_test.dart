@@ -144,6 +144,34 @@ void main() {
       expect(File(path.join(runDir.path, 'app.log')).existsSync(), isFalse);
     });
 
+    test('leaves a report for the developer when a repo failed', () async {
+      outcomes['ggsuite/base'] = RepoOutcome.failed;
+      await run();
+
+      final report = File(
+        path.join(
+          maintainDir().path,
+          '2026_10_28_074200',
+          Maintainer.reportFile,
+        ),
+      );
+      final text = report.readAsStringSync();
+      expect(text, startsWith('gg do maintain, run 2026_10_28_074200'));
+      expect(text, contains('Failed (1):'));
+      expect(text, contains('  ggsuite/base: commit: tests failed'));
+      expect(text, contains('  ggsuite/app: waits for ggsuite/base'));
+      // No color codes in a file.
+      expect(text, isNot(contains('\x1B')));
+      expect(log, contains(contains('Report: ${report.path}')));
+    });
+
+    test('leaves no report when nothing failed', () async {
+      outcomes['ggsuite/base'] = RepoOutcome.published;
+      await run();
+      expect(maintainDir().existsSync(), isFalse);
+      expect(log, isNot(contains(contains('Report:'))));
+    });
+
     test('says when it only tries', () async {
       await run(options: MaintainOptions.example(dryRun: true));
       expect(log.first, contains('Trying'));

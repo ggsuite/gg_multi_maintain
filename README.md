@@ -39,6 +39,7 @@ gg do maintain --upgrade-sdk                 # Dart SDK and Node constraints
 gg do maintain --upgrade-dna                 # the DNA layers, then regenerate
 gg do maintain --upgrade-deps                # compatible dependency upgrades
 gg do maintain --upgrade-deps --major        # also across major versions
+gg do maintain --nightly                     # the nightly build
 gg do maintain --all --org ggsuite --dry-run # see what would change
 ```
 
@@ -49,6 +50,7 @@ gg do maintain --all --org ggsuite --dry-run # see what would change
 | `--major` | With `--upgrade-deps`: allows major version jumps |
 | `--upgrade-dna` | Upgrades the DNA layers and the helix engine, then regenerates the DNA |
 | `--all` | All tasks above |
+| `--nightly` | The nightly build: `--upgrade-deps --major`, see below |
 | `-j`, `--jobs` | How many repos run at the same time, default 4 |
 | `--org`, `--repo` | Limit the run, e.g. `--org tssuite` or `--repo 'gg_*'` |
 | `--version-increment` | `patch`, `minor` or `major` for every repo |
@@ -79,6 +81,56 @@ Unchanged (1):
 Skipped (1):
   ggsuite/testproject_gg_1: a test project
 ```
+
+## Nightly build
+
+Commit, push and publish of a ticket upgrade no dependency. New versions,
+major versions included, reach the ocean through one run every night:
+
+```bash
+gg do maintain --nightly
+```
+
+It raises the dependencies of every repo across major versions and
+publishes every changed repo without a review — it changes versions, no
+code. A repo whose checks or tests fail after the upgrade is not
+published, and nothing is published on top of it: the repos depending on
+it are blocked. The run then exits with an error and writes
+`<workspace>/.maintain/<run id>/report.txt`: which repo failed, in which
+step, why, and where its clone and log are. Fix the repo in a ticket; the
+next night picks up where this one stopped.
+
+### Set up the computer of the nightly build
+
+The nightly build runs on a computer of its own, not on a developer's
+machine and not on GitHub:
+
+1. Install Dart, Flutter (for Flutter repos), Node with pnpm, git and the
+   GitHub CLI, then gg: `dart pub global activate gg`
+2. Sign in once, with an account that may push to `main` through pull
+   requests and publish the packages:
+   - `gh auth login` — pull requests and their merge
+   - `dart pub login` — uploads to pub.dev
+   - an npm access token that may publish without a one-time password,
+     in `~/.npmrc` (`//registry.npmjs.org/:_authToken=<token>`) — a run
+     without a terminal cannot answer a one-time password prompt
+3. Create a workspace with the ocean of the organizations, e.g.
+   `C:\nightly\.ocean`, as on a developer machine. `gg do upgrade ocean`
+   brings in the repos created since
+4. Schedule the run at night, from the workspace root. On Windows:
+
+   ```bash
+   schtasks /create /tn gg-nightly /sc daily /st 02:00 /tr "cmd /c cd /d C:\nightly && gg do maintain --nightly > nightly.log 2>&1"
+   ```
+
+   On Linux or macOS, as a line of the crontab:
+
+   ```bash
+   0 2 * * * cd ~/nightly && gg do maintain --nightly > nightly.log 2>&1
+   ```
+
+5. Read `nightly.log` and, after a failed night, the `report.txt` it
+   names
 
 ## Limitations
 

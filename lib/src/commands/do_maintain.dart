@@ -19,6 +19,11 @@ import '../maintain_options.dart';
 ///
 /// At least one task flag is required. Every changed repo is committed and
 /// published on its own with `gg one do publish`.
+///
+/// `--nightly` is the run a computer of its own starts every night: it
+/// upgrades the dependencies of every repo across major versions
+/// (`--upgrade-deps --major`). A repo that breaks stops the repos that
+/// depend on it, and the run writes `report.txt` into its run folder.
 class DoMaintain extends Command<void> {
   /// Constructor
   DoMaintain({
@@ -54,8 +59,8 @@ class DoMaintain extends Command<void> {
   @override
   String get invocation =>
       'gg do maintain '
-      '(--upgrade-sdk | --upgrade-deps [--major] | --upgrade-dna | --all) '
-      '[options]';
+      '(--upgrade-sdk | --upgrade-deps [--major] | --upgrade-dna | --all | '
+      '--nightly) [options]';
 
   /// The log function.
   final GgLog ggLog;
@@ -87,19 +92,21 @@ class DoMaintain extends Command<void> {
   /// Turns the parsed arguments into options; throws on a wrong combination.
   MaintainOptions optionsOf(ArgResults args) {
     final all = args['all'] as bool;
+    final nightly = args['nightly'] as bool;
     final tasks = {
       for (final task in MaintainTask.values)
         if (all || args[task.flag] as bool) task,
+      if (nightly) MaintainTask.deps,
     };
     if (tasks.isEmpty) {
       throw UsageException(
         'Choose at least one task: '
-        '${MaintainTask.values.map((t) => '--${t.flag}').join(', ')} '
-        'or --all.',
+        '${MaintainTask.values.map((t) => '--${t.flag}').join(', ')}, '
+        '--all or --nightly.',
         usage,
       );
     }
-    final major = args['major'] as bool;
+    final major = nightly || args['major'] as bool;
     if (major && !tasks.contains(MaintainTask.deps)) {
       throw UsageException('--major needs --upgrade-deps.', usage);
     }
@@ -149,6 +156,13 @@ class DoMaintain extends Command<void> {
         help: 'Raise the DNA layers to their newest versions.',
       )
       ..addFlag('all', negatable: false, help: 'Run all tasks.')
+      ..addFlag(
+        'nightly',
+        negatable: false,
+        help:
+            'The nightly build: --upgrade-deps --major. A repo that breaks '
+            'stops its dependents; the run folder gets a report.txt.',
+      )
       ..addOption(
         'jobs',
         abbr: 'j',

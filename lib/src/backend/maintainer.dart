@@ -36,7 +36,9 @@ typedef RepoMaintainerFactory = RepoMaintainer Function(
 /// A failed repo blocks its dependents and nothing else.
 ///
 /// Everything happens below `<workspace>/.maintain/<run id>/<org>/<repo>`.
-/// The folder only keeps what failed: the clone and its log.
+/// The folder only keeps what failed: the clone and its log. A run with
+/// problems also leaves [reportFile] there — the summary for the developer,
+/// who reads it after a run nobody watched.
 class Maintainer {
   /// Constructor
   Maintainer({
@@ -84,12 +86,21 @@ class Maintainer {
     final report = MaintainReport(results: results.values.toList());
     ggLog('');
     report.lines().forEach(ggLog);
+    if (report.hasProblems) {
+      final file = File(path.join(runDir.path, reportFile))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(report.text(runId: options.runId));
+      ggLog(darkGray('Report: ${file.path}'));
+    }
     return report;
   }
 
   // ...........................................................................
   /// The folder below the workspace root that holds the runs.
   static const maintainFolder = '.maintain';
+
+  /// The file in the run folder that reports a run with problems.
+  static const reportFile = 'report.txt';
 
   // ...........................................................................
   final RepoSelection _selection;

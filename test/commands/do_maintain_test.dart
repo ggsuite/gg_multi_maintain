@@ -115,6 +115,21 @@ void main() {
       expect(options.dryRun, isTrue);
     });
 
+    test('--nightly upgrades the dependencies across major versions', () async {
+      await run(['--nightly']);
+      final options = maintainer.options!;
+      expect(options.tasks, {MaintainTask.deps});
+      expect(options.major, isTrue);
+      expect(options.dryRun, isFalse);
+    });
+
+    test('--nightly goes with other tasks', () async {
+      await run(['--nightly', '--upgrade-dna']);
+      final options = maintainer.options!;
+      expect(options.tasks, {MaintainTask.deps, MaintainTask.dna});
+      expect(options.major, isTrue);
+    });
+
     test('--all runs every task', () async {
       await run(['--all']);
       expect(maintainer.options!.tasks, MaintainTask.values.toSet());
@@ -181,6 +196,7 @@ void main() {
       expect(command.name, 'maintain');
       expect(command.description, contains('publish every changed repo'));
       expect(command.invocation, contains('gg do maintain (--upgrade-sdk'));
+      expect(command.invocation, contains('--nightly'));
       final runner = CommandRunner<void>('gg', 'test')..addCommand(command);
       expect(runner.commands['maintain'], command);
     });

@@ -83,8 +83,8 @@
     },
     {
       "name": "dna-github",
-      "package": "dna_github",
-      "ecosystem": "pub",
+      "package": "@ggdna/dna-github",
+      "ecosystem": "node",
       "resolvedVersion": "0.1.1",
       "via": "dna-gg",
       "hash": "0xf541b93b3dc7995d"
@@ -93,9 +93,9 @@
       "name": "dna-gg",
       "package": "dna_gg",
       "ecosystem": "pub",
-      "resolvedVersion": "1.1.0",
+      "resolvedVersion": "1.6.0",
       "via": "dna-ggsuite",
-      "hash": "0x8654064a14538e39"
+      "hash": "0x1be177dde62ec3b7"
     },
     {
       "name": "dna-ggsuite",
@@ -131,7 +131,7 @@
     },
     {
       "path": ".claude/hooks/pm-prompts.mjs",
-      "hash": "0x988aed96a8073727"
+      "hash": "0x6b8fdf7bbbf7c1a5"
     },
     {
       "path": ".claude/settings.json",
@@ -147,7 +147,7 @@
     },
     {
       "path": ".claude/skills/gg-cleanup/SKILL.md",
-      "hash": "0x4a6903a51168486a"
+      "hash": "0x634921912309c933"
     },
     {
       "path": ".claude/skills/gg-commit/SKILL.md",
@@ -155,19 +155,19 @@
     },
     {
       "path": ".claude/skills/gg-publish/SKILL.md",
-      "hash": "0xcdef2684fcaaac5a"
+      "hash": "0x7ea44a57ed7d2ae8"
     },
     {
       "path": ".claude/skills/gg-push/SKILL.md",
-      "hash": "0x140e1b8d6cbe222e"
+      "hash": "0xe9bf8d2d00371cf3"
     },
     {
       "path": ".claude/skills/gg-review/SKILL.md",
-      "hash": "0x9f7bbbe511238684"
+      "hash": "0x3a4506ccd5c8e1be"
     },
     {
       "path": ".claude/skills/gg-ticket/SKILL.md",
-      "hash": "0x0532d8ac37060521"
+      "hash": "0xa44f6e5ad54a6d0b"
     },
     {
       "path": ".claude/skills/gg/SKILL.md",
@@ -251,11 +251,11 @@
     },
     {
       "path": "doc/guides/develop-guide.md",
-      "hash": "0x39718de56fdb48f0"
+      "hash": "0x4c378a55b3c4773b"
     },
     {
       "path": "doc/guides/develop-without-ai-guide.md",
-      "hash": "0xe74449f72357f23c"
+      "hash": "0x88551202636c10c0"
     },
     {
       "path": "doc/guides/dna-guides-guide.md",
@@ -267,7 +267,7 @@
     },
     {
       "path": "doc/guides/for-ai/ai-dev-guide.md",
-      "hash": "0x5ac430cba252b5bc"
+      "hash": "0xb3354db9fff082e9"
     },
     {
       "path": "doc/guides/for-ai/ai-review-guide.md",

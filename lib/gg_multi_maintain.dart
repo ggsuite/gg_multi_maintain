@@ -24,4 +24,3 @@ export 'src/maintain_options.dart';
 export 'src/tasks/upgrade_deps.dart';
 export 'src/tasks/upgrade_dna.dart';
 export 'src/tasks/upgrade_sdk.dart';
-export 'src/tasks/version_increment.dart';

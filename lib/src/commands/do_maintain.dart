@@ -18,7 +18,9 @@ import '../maintain_options.dart';
 /// `gg do maintain`: runs maintenance tasks in all ocean repos.
 ///
 /// At least one task flag is required. Every changed repo is committed and
-/// published on its own with `gg one do publish`.
+/// merged into its main branch with `gg one do publish --merge-only` —
+/// nothing is released. A release goes through a normal ticket and its
+/// review.
 ///
 /// `--nightly` is the run a computer of its own starts every night: it
 /// upgrades the dependencies of every repo across major versions
@@ -53,8 +55,8 @@ class DoMaintain extends Command<void> {
 
   @override
   final description =
-      'Run maintenance tasks in all ocean repos in parallel and publish '
-      'every changed repo.';
+      'Run maintenance tasks in all ocean repos in parallel and merge '
+      'every changed repo into main, without publishing.';
 
   @override
   String get invocation =>
@@ -122,8 +124,6 @@ class DoMaintain extends Command<void> {
       dryRun: args['dry-run'] as bool,
       orgs: args['org'] as List<String>,
       repos: args['repo'] as List<String>,
-      versionIncrement: args['version-increment'] as String?,
-      pana: args['pana'] as bool,
     );
   }
 
@@ -179,25 +179,13 @@ class DoMaintain extends Command<void> {
             'Only the repos matching this name, e.g. gg_* or ggsuite/gg. '
             'Repeat for more.',
       )
-      ..addOption(
-        'version-increment',
-        allowed: ['patch', 'minor', 'major'],
-        help:
-            'The version increment of every published repo. Default: minor '
-            'when a dependency jumps a major version, else patch.',
-      )
-      ..addFlag(
-        'pana',
-        defaultsTo: true,
-        help: 'Run pana before publishing a Dart package.',
-      )
       ..addFlag(
         'dry-run',
         abbr: 'n',
         negatable: false,
         help:
             'Apply the tasks in the clones and report what would change, '
-            'but neither commit nor publish.',
+            'but neither commit nor merge.',
       );
   }
 }

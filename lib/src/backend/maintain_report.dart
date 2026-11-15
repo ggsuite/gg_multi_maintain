@@ -14,7 +14,7 @@ class MaintainReport {
   /// Constructor
   const MaintainReport({required this.results});
 
-  /// A report of one published repo.
+  /// A report of one merged repo.
   factory MaintainReport.example({List<RepoResult>? results}) =>
       MaintainReport(results: results ?? [RepoResult.example()]);
 
@@ -77,7 +77,7 @@ class MaintainReport {
 
   // ...........................................................................
   String Function(Object) _color(RepoOutcome outcome) => switch (outcome) {
-    RepoOutcome.published => green,
+    RepoOutcome.merged => green,
     RepoOutcome.changed => blue,
     RepoOutcome.unchanged || RepoOutcome.skipped => darkGray,
     RepoOutcome.blocked => yellow,

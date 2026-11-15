@@ -11,7 +11,7 @@ void main() {
   group('RepoOutcome', () {
     test('lets dependents run unless failed or blocked', () {
       expect(RepoOutcome.values.where((o) => o.letsDependentsRun), [
-        RepoOutcome.published,
+        RepoOutcome.merged,
         RepoOutcome.changed,
         RepoOutcome.unchanged,
         RepoOutcome.skipped,
@@ -21,11 +21,11 @@ void main() {
   });
 
   group('RepoResult', () {
-    test('example is a published repo', () {
+    test('example is a merged repo', () {
       final result = RepoResult.example();
       expect(result.repo.key, 'ggsuite/gg_json');
-      expect(result.outcome, RepoOutcome.published);
-      expect(result.detail, '1.2.4');
+      expect(result.outcome, RepoOutcome.merged);
+      expect(result.detail, 'pubspec.yaml');
       expect(result.step, isNull);
       expect(result.clonePath, isNull);
       expect(result.logPath, isNull);

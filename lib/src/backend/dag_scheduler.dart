@@ -12,7 +12,7 @@ import 'dart:async';
 /// A key starts as soon as every dependency succeeded and a slot is free.
 /// A key whose dependency failed or was blocked never starts; it is reported
 /// to `onBlocked` instead. That way a repo is only maintained once the repos
-/// it depends on are published.
+/// it depends on succeeded.
 class DagScheduler {
   /// Constructor
   const DagScheduler({required this.jobs})

@@ -102,7 +102,7 @@ void main() {
         );
 
     test('runs the dependencies first and reports all repos', () async {
-      outcomes['ggsuite/base'] = RepoOutcome.published;
+      outcomes['ggsuite/base'] = RepoOutcome.merged;
       final report = await run();
       expect(started, ['ggsuite/base', 'ggsuite/app']);
       expect(report.hasProblems, isFalse);
@@ -110,7 +110,7 @@ void main() {
         {for (final r in report.results) r.repo.key: r.outcome},
         {
           'ggsuite/testproject_gg_1': RepoOutcome.skipped,
-          'ggsuite/base': RepoOutcome.published,
+          'ggsuite/base': RepoOutcome.merged,
           'ggsuite/app': RepoOutcome.unchanged,
         },
       );
@@ -122,7 +122,7 @@ void main() {
         ),
       );
       expect(log, contains(contains('working on base')));
-      expect(log, contains(contains('Published (1):')));
+      expect(log, contains(contains('Merged (1):')));
       expect(maintainDir().existsSync(), isFalse);
     });
 
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('leaves no report when nothing failed', () async {
-      outcomes['ggsuite/base'] = RepoOutcome.published;
+      outcomes['ggsuite/base'] = RepoOutcome.merged;
       await run();
       expect(maintainDir().existsSync(), isFalse);
       expect(log, isNot(contains(contains('Report:'))));

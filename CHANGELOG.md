@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Merge maintained repos into main instead of publishing
+
+Merge with gg one do publish --merge-only: no version, upload or tag
+Outcome published becomes merged
+Remove --version-increment and --pana
+README, README.de and index.jsonc
+
 ## 0.1.1 - 2026-11-15
 
 ### Added

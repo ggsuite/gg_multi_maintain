@@ -31,8 +31,8 @@ typedef RepoMaintainerFactory = RepoMaintainer Function(
 /// Maintains all selected ocean repos of a workspace.
 ///
 /// The repos run in parallel, up to `--jobs` at a time, but a repo only
-/// starts once every repo it depends on is published or turned out
-/// unchanged — so an upgrade always sees the versions this run released.
+/// starts once every repo it depends on is merged or turned out
+/// unchanged — so no repo is maintained on top of a broken one.
 /// A failed repo blocks its dependents and nothing else.
 ///
 /// Everything happens below `<workspace>/.maintain/<run id>/<org>/<repo>`.

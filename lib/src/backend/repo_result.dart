@@ -9,8 +9,8 @@ import 'ocean_repo.dart';
 // #############################################################################
 /// How maintaining a repo ended.
 enum RepoOutcome {
-  /// Changed, committed and published.
-  published('Published'),
+  /// Changed, committed and merged into the main branch, not released.
+  merged('Merged'),
 
   /// Changed, but not committed because of `--dry-run`.
   changed('Would change'),
@@ -49,7 +49,7 @@ class RepoResult {
     this.logPath,
   });
 
-  /// A published repo.
+  /// A merged repo.
   factory RepoResult.example({
     OceanRepo? repo,
     RepoOutcome? outcome,
@@ -59,8 +59,8 @@ class RepoResult {
     String? logPath,
   }) => RepoResult(
     repo: repo ?? OceanRepo.example(),
-    outcome: outcome ?? RepoOutcome.published,
-    detail: detail ?? '1.2.4',
+    outcome: outcome ?? RepoOutcome.merged,
+    detail: detail ?? 'pubspec.yaml',
     step: step,
     clonePath: clonePath,
     logPath: logPath,
@@ -73,7 +73,7 @@ class RepoResult {
   /// How it ended.
   final RepoOutcome outcome;
 
-  /// The published version, the changed files, the reason or the error.
+  /// The changed files, the reason or the error.
   final String detail;
 
   /// The step that failed.

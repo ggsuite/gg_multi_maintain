@@ -37,8 +37,6 @@ class MaintainOptions {
     this.dryRun = false,
     this.orgs = const [],
     this.repos = const [],
-    this.versionIncrement,
-    this.pana = true,
   });
 
   /// Options that upgrade everything in a fixed run.
@@ -50,8 +48,6 @@ class MaintainOptions {
     bool? dryRun,
     List<String>? orgs,
     List<String>? repos,
-    String? versionIncrement,
-    bool? pana,
   }) => MaintainOptions(
     tasks: tasks ?? MaintainTask.values.toSet(),
     runId: runId ?? '2026_10_28_074200',
@@ -60,8 +56,6 @@ class MaintainOptions {
     dryRun: dryRun ?? false,
     orgs: orgs ?? const [],
     repos: repos ?? const [],
-    versionIncrement: versionIncrement,
-    pana: pana ?? true,
   );
 
   // ...........................................................................
@@ -77,7 +71,7 @@ class MaintainOptions {
   /// How many repos are maintained at the same time.
   final int jobs;
 
-  /// Applies the tasks, but neither commits nor publishes.
+  /// Applies the tasks, but neither commits nor merges.
   final bool dryRun;
 
   /// Limits the run to these organizations; empty means all.
@@ -85,12 +79,6 @@ class MaintainOptions {
 
   /// Limits the run to repos matching these patterns; `*` is a wildcard.
   final List<String> repos;
-
-  /// patch, minor or major; null derives it from the changes.
-  final String? versionIncrement;
-
-  /// Runs pana before publishing Dart packages.
-  final bool pana;
 
   // ...........................................................................
   /// The feature branch every repo is maintained on.

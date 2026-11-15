@@ -17,18 +17,18 @@ void main() {
           detail: detail,
         );
 
-    test('example reports one published repo', () {
+    test('example reports one merged repo', () {
       expect(MaintainReport.example().lines(), [
-        green('Published (1):'),
-        '  ggsuite/gg_json: 1.2.4',
+        green('Merged (1):'),
+        '  ggsuite/gg_json: pubspec.yaml',
       ]);
     });
 
     test('groups by outcome and sorts by repo', () {
       final report = MaintainReport(
         results: [
-          result('b', RepoOutcome.published, '2.0.0'),
-          result('a', RepoOutcome.published, '1.0.1'),
+          result('b', RepoOutcome.merged, '2.0.0'),
+          result('a', RepoOutcome.merged, '1.0.1'),
           result('c', RepoOutcome.unchanged),
           result('d', RepoOutcome.changed, 'pubspec.yaml'),
           result('e', RepoOutcome.skipped, 'a test project'),
@@ -36,7 +36,7 @@ void main() {
         ],
       );
       expect(report.lines(), [
-        green('Published (2):'),
+        green('Merged (2):'),
         '  ggsuite/a: 1.0.1',
         '  ggsuite/b: 2.0.0',
         blue('Would change (1):'),
@@ -75,7 +75,7 @@ void main() {
     test('lines without colors and the text of the report file', () {
       final report = MaintainReport(
         results: [
-          result('a', RepoOutcome.published, '1.0.1'),
+          result('a', RepoOutcome.merged, '1.0.1'),
           RepoResult(
             repo: OceanRepo.example(name: 'b'),
             outcome: RepoOutcome.failed,
@@ -85,7 +85,7 @@ void main() {
         ],
       );
       expect(report.lines(colored: false), [
-        'Published (1):',
+        'Merged (1):',
         '  ggsuite/a: 1.0.1',
         'Failed (1):',
         '  ggsuite/b: commit: tests failed',
@@ -95,7 +95,7 @@ void main() {
         [
           'gg do maintain, run 2026_11_15_020000',
           '',
-          'Published (1):',
+          'Merged (1):',
           '  ggsuite/a: 1.0.1',
           'Failed (1):',
           '  ggsuite/b: commit: tests failed',

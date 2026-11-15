@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 - 2026-11-15
+
+### Added
+
+- Add the blog post on merging into main
+
+### Changed
+
+- Describe the merge in the library docs
+
+### Removed
+
+- Merge maintained repos into main instead of publishing
+
 ## 0.1.1 - 2026-11-15
 
 ### Added

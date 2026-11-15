@@ -5,7 +5,7 @@ English | [Deutsch](README.de.md)
 [![CI](https://github.com/ggsuite/gg_multi_maintain/actions/workflows/quick_check.yaml/badge.svg)](https://github.com/ggsuite/gg_multi_maintain/actions/workflows/quick_check.yaml)
 [![pub package](https://img.shields.io/pub/v/gg_multi_maintain.svg)](https://pub.dev/packages/gg_multi_maintain)
 
-Runs maintenance tasks like SDK, DNA and dependency upgrades in all ocean repos in parallel and publishes every changed repo.
+Runs maintenance tasks like SDK, DNA and dependency upgrades in all ocean repos in parallel and merges every changed repo into its main branch, without publishing.
 
 ## Motivation
 
@@ -17,9 +17,13 @@ one call:
 
 - every repo gets its own fresh clone and branch, the ocean stays as it is
 - the repos run in parallel, but a repo waits for the repos it depends
-  on, so an upgrade sees the versions the same run just released
-- every changed repo is committed and published on its own with
-  `gg one do publish`, with all checks and tests of `gg one do commit`
+  on, so no repo is maintained on top of a broken one
+- every changed repo is committed with all checks and tests of
+  `gg one do commit` and merged into its main branch with
+  `gg one do publish --merge-only`
+- nothing is released: no new version, no upload, no tag. The changes
+  wait below `## Unreleased` in `CHANGELOG.md`. Everything that is
+  published anywhere goes through a normal ticket and its review
 - a failing repo only stops the repos that depend on it
 
 ## Installation
@@ -53,9 +57,7 @@ gg do maintain --all --org ggsuite --dry-run # see what would change
 | `--nightly` | The nightly build: `--upgrade-deps --major`, see below |
 | `-j`, `--jobs` | How many repos run at the same time, default 4 |
 | `--org`, `--repo` | Limit the run, e.g. `--org tssuite` or `--repo 'gg_*'` |
-| `--version-increment` | `patch`, `minor` or `major` for every repo |
-| `--no-pana` | Skip pana before publishing Dart packages |
-| `-n`, `--dry-run` | Apply the tasks and report the changes, without commit and publish |
+| `-n`, `--dry-run` | Apply the tasks and report the changes, without commit and merge |
 
 The example prints the help of the command:
 
@@ -73,9 +75,9 @@ Future<void> main() async {
 At the end, the command prints a summary like this:
 
 ```text
-Published (2):
-  ggsuite/gg_hash: 3.1.5
-  ggsuite/gg_json: 2.4.1
+Merged (2):
+  ggsuite/gg_hash: pubspec.yaml
+  ggsuite/gg_json: pubspec.yaml, 1 other file
 Unchanged (1):
   ggsuite/gg_log
 Skipped (1):
@@ -85,16 +87,18 @@ Skipped (1):
 ## Nightly build
 
 Commit, push and publish of a ticket upgrade no dependency. New versions,
-major versions included, reach the ocean through one run every night:
+major versions included, reach the main branches through one run every
+night:
 
 ```bash
 gg do maintain --nightly
 ```
 
 It raises the dependencies of every repo across major versions and
-publishes every changed repo without a review — it changes versions, no
-code. A repo whose checks or tests fail after the upgrade is not
-published, and nothing is published on top of it: the repos depending on
+merges every changed repo into main without a review — it changes
+versions, no code. It releases nothing; the next ticket that publishes a
+repo releases its upgrades too. A repo whose checks or tests fail after the
+upgrade is not merged, and nothing is merged on top of it: the repos depending on
 it are blocked. The run then exits with an error and writes
 `<workspace>/.maintain/<run id>/report.txt`: which repo failed, in which
 step, why, and where its clone and log are. Fix the repo in a ticket; the
@@ -108,12 +112,8 @@ machine and not on GitHub:
 1. Install Dart, Flutter (for Flutter repos), Node with pnpm, git and the
    GitHub CLI, then gg: `dart pub global activate gg`
 2. Sign in once, with an account that may push to `main` through pull
-   requests and publish the packages:
-   - `gh auth login` — pull requests and their merge
-   - `dart pub login` — uploads to pub.dev
-   - an npm access token that may publish without a one-time password,
-     in `~/.npmrc` (`//registry.npmjs.org/:_authToken=<token>`) — a run
-     without a terminal cannot answer a one-time password prompt
+   requests: `gh auth login`. No registry login is needed, the run
+   uploads nothing
 3. Create a workspace with the ocean of the organizations, e.g.
    `C:\nightly\.ocean`, as on a developer machine. `gg do upgrade ocean`
    brings in the repos created since
@@ -137,20 +137,16 @@ machine and not on GitHub:
 - Test projects, private packages and repos without a remote are
   skipped. A package that was never published is skipped too, because its
   first version is published by hand.
-- npm publishes may ask for a one-time password, so they run one at a
-  time. pnpm's minimum release age can hold back a version that the same
-  run has just published.
 - Only lock files or gg's state in `.gg/` changed? Then the repo counts as
-  unchanged and is not published.
+  unchanged and is not merged.
 
 ## How it works
 
 Each run gets a folder `<workspace>/.maintain/<run id>/<org>/<repo>`.
 The pipeline of a repo is: clone, skip it if it was never published,
 create the branch `maintain_<run id>`, install, run the tasks, detect
-the changes, `gg one do commit`, `gg one do publish`, delete the clone.
-The version increment is `minor` when a regular dependency jumps across
-its old constraint, otherwise `patch`. A failed clone stays in the run
+the changes, `gg one do commit`, `gg one do publish --merge-only`, delete the clone. A
+failed clone stays in the run
 folder with its log.
 
 ## Status

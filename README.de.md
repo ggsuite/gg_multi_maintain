@@ -5,7 +5,7 @@
 [![CI](https://github.com/ggsuite/gg_multi_maintain/actions/workflows/quick_check.yaml/badge.svg)](https://github.com/ggsuite/gg_multi_maintain/actions/workflows/quick_check.yaml)
 [![pub package](https://img.shields.io/pub/v/gg_multi_maintain.svg)](https://pub.dev/packages/gg_multi_maintain)
 
-Führt Wartungsaufgaben wie SDK-, DNA- und Abhängigkeits-Upgrades parallel in allen Ocean-Repos aus und veröffentlicht jedes geänderte Repo.
+Führt Wartungsaufgaben wie SDK-, DNA- und Abhängigkeits-Upgrades parallel in allen Ocean-Repos aus und merged jedes geänderte Repo in seinen main-Branch, ohne zu veröffentlichen.
 
 ## Motivation
 
@@ -18,10 +18,14 @@ Routinearbeit für den ganzen Ocean mit einem Aufruf:
 - jedes Repo bekommt einen eigenen frischen Klon und Branch, der Ocean
   bleibt, wie er ist
 - die Repos laufen parallel, aber ein Repo wartet auf die Repos, von
-  denen es abhängt, damit ein Upgrade die Versionen sieht, die derselbe
-  Lauf gerade veröffentlicht hat
-- jedes geänderte Repo wird einzeln mit `gg one do publish`
-  veröffentlicht, mit allen Prüfungen und Tests von `gg one do commit`
+  denen es abhängt, damit kein Repo auf einem kaputten aufsetzt
+- jedes geänderte Repo wird mit allen Prüfungen und Tests von
+  `gg one do commit` committet und mit `gg one do publish --merge-only`
+  in seinen main-Branch gemerged
+- nichts wird veröffentlicht: keine neue Version, kein Upload, kein Tag.
+  Die Änderungen warten unter `## Unreleased` in `CHANGELOG.md`. Alles,
+  was irgendwo veröffentlicht wird, läuft über ein normales Ticket und
+  sein Review
 - ein scheiterndes Repo hält nur die Repos auf, die von ihm abhängen
 
 ## Installation
@@ -56,9 +60,7 @@ gg do maintain --all --org ggsuite --dry-run # see what would change
 | `--nightly` | Der nächtliche Build: `--upgrade-deps --major`, siehe unten |
 | `-j`, `--jobs` | Wie viele Repos gleichzeitig laufen, Standard 4 |
 | `--org`, `--repo` | Begrenzt den Lauf, z. B. `--org tssuite` oder `--repo 'gg_*'` |
-| `--version-increment` | `patch`, `minor` oder `major` für jedes Repo |
-| `--no-pana` | Überspringt pana vor dem Veröffentlichen von Dart-Paketen |
-| `-n`, `--dry-run` | Wendet die Aufgaben an und meldet die Änderungen, ohne Commit und Publish |
+| `-n`, `--dry-run` | Wendet die Aufgaben an und meldet die Änderungen, ohne Commit und Merge |
 
 Das Beispiel gibt die Hilfe des Befehls aus:
 
@@ -76,9 +78,9 @@ Future<void> main() async {
 Am Ende druckt der Befehl eine Zusammenfassung wie diese:
 
 ```text
-Published (2):
-  ggsuite/gg_hash: 3.1.5
-  ggsuite/gg_json: 2.4.1
+Merged (2):
+  ggsuite/gg_hash: pubspec.yaml
+  ggsuite/gg_json: pubspec.yaml, 1 other file
 Unchanged (1):
   ggsuite/gg_log
 Skipped (1):
@@ -88,17 +90,19 @@ Skipped (1):
 ## Nächtlicher Build
 
 Commit, Push und Publish eines Tickets heben keine Abhängigkeit an. Neue
-Versionen, auch Major-Versionen, kommen über einen Lauf jede Nacht in den
-Ocean:
+Versionen, auch Major-Versionen, kommen über einen Lauf jede Nacht in die
+main-Branches:
 
 ```bash
 gg do maintain --nightly
 ```
 
 Er hebt die Abhängigkeiten jedes Repos über Major-Versionen hinweg an
-und veröffentlicht jedes geänderte Repo ohne Review — er ändert
-Versionen, keinen Code. Ein Repo, dessen Prüfungen oder Tests nach dem
-Upgrade scheitern, wird nicht veröffentlicht, und nichts wird darauf
+und merged jedes geänderte Repo ohne Review nach main — er ändert
+Versionen, keinen Code. Er veröffentlicht nichts; das nächste Ticket, das
+ein Repo veröffentlicht, veröffentlicht dessen Upgrades mit. Ein Repo,
+dessen Prüfungen oder Tests nach dem Upgrade scheitern, wird nicht
+gemerged, und nichts wird darauf
 aufgesetzt: Die Repos, die von ihm abhängen, sind blockiert. Der Lauf
 endet dann mit einem Fehler und schreibt
 `<workspace>/.maintain/<lauf-id>/report.txt`: welches Repo in welchem
@@ -113,12 +117,8 @@ Rechner eines Entwicklers und nicht auf GitHub:
 1. Dart, Flutter (für Flutter-Repos), Node mit pnpm, git und die GitHub
    CLI installieren, dann gg: `dart pub global activate gg`
 2. Einmal anmelden, mit einem Konto, das über Pull Requests nach `main`
-   pushen und die Pakete veröffentlichen darf:
-   - `gh auth login` — Pull Requests und ihr Merge
-   - `dart pub login` — Uploads nach pub.dev
-   - ein npm-Zugriffstoken, das ohne Einmalpasswort veröffentlichen darf,
-     in `~/.npmrc` (`//registry.npmjs.org/:_authToken=<token>`) — ein Lauf
-     ohne Terminal kann keine Abfrage eines Einmalpassworts beantworten
+   pushen darf: `gh auth login`. Eine Anmeldung an einer Registry ist
+   nicht nötig, der Lauf lädt nichts hoch
 3. Einen Workspace mit dem Ocean der Organisationen anlegen, z. B.
    `C:\nightly\.ocean`, wie auf einem Entwicklerrechner. `gg do upgrade
    ocean` holt die Repos dazu, die seither angelegt wurden
@@ -143,12 +143,8 @@ Rechner eines Entwicklers und nicht auf GitHub:
 - Testprojekte, private Pakete und Repos ohne Remote werden
   übersprungen. Ein Paket, das nie veröffentlicht wurde, ebenfalls, denn
   seine erste Version wird von Hand veröffentlicht.
-- npm-Veröffentlichungen fragen eventuell nach einem Einmalpasswort und
-  laufen deshalb nacheinander. Das Mindestalter von pnpm für neue
-  Versionen kann eine Version zurückhalten, die derselbe Lauf gerade
-  veröffentlicht hat.
 - Haben sich nur Lock-Dateien oder gg-Zustand in `.gg/` geändert, gilt
-  das Repo als unverändert und wird nicht veröffentlicht.
+  das Repo als unverändert und wird nicht gemerged.
 
 ## So funktioniert es
 
@@ -156,9 +152,7 @@ Jeder Lauf bekommt einen Ordner `<workspace>/.maintain/<lauf-id>/<org>/<repo>`.
 Die Pipeline eines Repos: klonen, überspringen, falls nie
 veröffentlicht, Branch `maintain_<lauf-id>` anlegen, installieren,
 Aufgaben ausführen, Änderungen erkennen, `gg one do commit`,
-`gg one do publish`, Klon löschen. Der Versionssprung ist `minor`, wenn
-eine normale Abhängigkeit über ihre alte Grenze springt, sonst `patch`.
-Ein gescheiterter Klon bleibt mit seinem Log im Lauf-Ordner.
+`gg one do publish --merge-only`, Klon löschen. Ein gescheiterter Klon bleibt mit seinem Log im Lauf-Ordner.
 
 ## Status
 

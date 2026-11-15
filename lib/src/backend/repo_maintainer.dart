@@ -4,7 +4,6 @@
 // Use of this source code is governed by terms that can be
 // found in the LICENSE file in the root of this package.
 
-import 'dart:async';
 import 'dart:io';
 
 import 'package:gg_lang/gg_lang.dart';
@@ -12,13 +11,11 @@ import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
 import 'package:gg_publish/gg_publish.dart' show IsPublished;
 import 'package:path/path.dart' as path;
-import 'package:yaml/yaml.dart';
 
 import '../maintain_options.dart';
 import '../tasks/upgrade_deps.dart';
 import '../tasks/upgrade_dna.dart';
 import '../tasks/upgrade_sdk.dart';
-import '../tasks/version_increment.dart';
 import 'ocean_repo.dart';
 import 'repo_result.dart';
 import 'shell.dart';
@@ -37,13 +34,12 @@ typedef CommitStep = Future<void> Function({
   required String message,
 });
 
-/// Publishes the committed checkout, like `gg one do publish`.
-typedef PublishStep = Future<void> Function({
+/// Merges the committed checkout into the main branch without releasing it,
+/// like `gg one do publish --merge-only`.
+typedef MergeStep = Future<void> Function({
   required Directory directory,
   required GgLog ggLog,
   required String message,
-  required String versionIncrement,
-  required bool pana,
 });
 
 /// Tells whether a package was ever published to its registries.
@@ -63,8 +59,9 @@ typedef IsPublishedStep = Future<bool> Function({
 /// 2. run the selected tasks: SDK, dependencies, DNA
 /// 3. stop as unchanged when only lock files or gg's own state changed
 /// 4. commit with `gg one do commit`, which runs all checks and tests
-/// 5. publish with `gg one do publish`, which merges and waits for the
-///    registry, so the repos depending on this one see the new version
+/// 5. merge into the main branch with `gg one do publish --merge-only`: no
+///    version increase, no upload, no tag. The changes wait below
+///    `## Unreleased` until a ticket releases the repo
 ///
 /// A finished clone is deleted; a failed one is kept for a look.
 class RepoMaintainer {
@@ -76,15 +73,12 @@ class RepoMaintainer {
     Map<MaintainTask, RepoTask>? tasks,
     IsPublishedStep? isPublished,
     CommitStep? commit,
-    PublishStep? publish,
-    this._versionIncrement = const VersionIncrement(),
-    Future<Set<PublishTarget>> Function(Directory directory)? publishTargets,
+    MergeStep? merge,
   }) : _shell = shell,
        _tasks = tasks ?? _defaultTasks(options, shell),
        _isPublished = isPublished ?? _defaultIsPublished,
        _commit = commit ?? _defaultCommit,
-       _publish = publish ?? _defaultPublish,
-       _publishTargets = publishTargets ?? publishTargetsOf;
+       _merge = merge ?? _defaultMerge;
 
   /// A maintainer whose steps only log.
   factory RepoMaintainer.example({
@@ -94,7 +88,7 @@ class RepoMaintainer {
     Map<MaintainTask, RepoTask>? tasks,
     IsPublishedStep? isPublished,
     CommitStep? commit,
-    PublishStep? publish,
+    MergeStep? merge,
   }) => RepoMaintainer(
     options: options ?? MaintainOptions.example(),
     runDir: runDir ?? Directory.systemTemp,
@@ -112,15 +106,10 @@ class RepoMaintainer {
         commit ??
         ({required directory, required ggLog, required message}) async =>
             ggLog('commit'),
-    publish:
-        publish ??
-        ({
-          required directory,
-          required ggLog,
-          required message,
-          required versionIncrement,
-          required pana,
-        }) async => ggLog('publish $versionIncrement'),
+    merge:
+        merge ??
+        ({required directory, required ggLog, required message}) async =>
+            ggLog('merge'),
   );
 
   // ...........................................................................
@@ -163,7 +152,6 @@ class RepoMaintainer {
       step = 'install the dependencies';
       await _install(dir);
 
-      final before = VersionIncrement.read(dir);
       for (final task in MaintainTask.values.where(options.tasks.contains)) {
         step = task.flag;
         ggLog('Running --${task.flag} ...');
@@ -183,29 +171,12 @@ class RepoMaintainer {
         return result(RepoOutcome.changed, summary);
       }
 
-      final increment =
-          options.versionIncrement ??
-          _versionIncrement.derive(
-            before: before,
-            after: VersionIncrement.read(dir),
-          );
-
       step = 'commit';
       await _commit(directory: dir, ggLog: ggLog, message: options.message);
-      step = 'publish';
-      await _serialIfNpm(
-        dir,
-        () => _publish(
-          directory: dir,
-          ggLog: ggLog,
-          message: options.message,
-          versionIncrement: increment,
-          pana: options.pana,
-        ),
-      );
-      final version = versionOf(dir);
+      step = 'merge';
+      await _merge(directory: dir, ggLog: ggLog, message: options.message);
       _delete(dir);
-      return result(RepoOutcome.published, version);
+      return result(RepoOutcome.merged, summary);
     } catch (e) {
       ggLog('Failed to $step: $e');
       return RepoResult(
@@ -263,31 +234,11 @@ class RepoMaintainer {
   }
 
   // ...........................................................................
-  /// Returns the version the manifest of [dir] carries.
-  static String versionOf(Directory dir) {
-    final pubspec = File(path.join(dir.path, 'pubspec.yaml'));
-    if (pubspec.existsSync()) {
-      final yaml = loadYaml(pubspec.readAsStringSync()) as YamlMap;
-      return '${yaml['version'] ?? ''}';
-    }
-    final packageJson = File(path.join(dir.path, 'package.json'));
-    final match = RegExp(r'"version"\s*:\s*"([^"]*)"')
-        .firstMatch(packageJson.readAsStringSync());
-    return match?.group(1) ?? '';
-  }
-
-  // ...........................................................................
   final Shell _shell;
   final Map<MaintainTask, RepoTask> _tasks;
   final IsPublishedStep _isPublished;
   final CommitStep _commit;
-  final PublishStep _publish;
-  final VersionIncrement _versionIncrement;
-  final Future<Set<PublishTarget>> Function(Directory directory)
-  _publishTargets;
-
-  /// npm publishes share the terminal for one-time passwords: one at a time.
-  Future<void> _npmQueue = Future.value();
+  final MergeStep _merge;
 
   static const _lockFiles = {
     'pubspec.lock',
@@ -331,22 +282,6 @@ class RepoMaintainer {
   }
 
   // ...........................................................................
-  Future<void> _serialIfNpm(Directory dir, Future<void> Function() run) async {
-    if (!(await _publishTargets(dir)).contains(PublishTarget.npm)) {
-      return run();
-    }
-    final previous = _npmQueue;
-    final done = Completer<void>();
-    _npmQueue = done.future;
-    await previous;
-    try {
-      await run();
-    } finally {
-      done.complete();
-    }
-  }
-
-  // ...........................................................................
   void _delete(Directory dir) {
     try {
       dir.deleteSync(recursive: true);
@@ -382,21 +317,18 @@ class RepoMaintainer {
       gg.DoCommit(ggLog: ggLog)
           .get(directory: directory, ggLog: ggLog, message: message);
 
-  static Future<void> _defaultPublish({
+  static Future<void> _defaultMerge({
     required Directory directory,
     required GgLog ggLog,
     required String message,
-    required String versionIncrement,
-    required bool pana,
   }) => gg.DoPublish(ggLog: ggLog).get(
     directory: directory,
     ggLog: ggLog,
     message: message,
-    versionIncrement: versionIncrement,
+    mergeOnly: true,
     deleteFeatureBranch: true,
     askBeforePublishing: false,
     upgrade: false,
-    pana: pana,
   );
   // coverage:ignore-end
 }

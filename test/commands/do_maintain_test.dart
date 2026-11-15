@@ -81,8 +81,6 @@ void main() {
       expect(options.dryRun, isFalse);
       expect(options.orgs, isEmpty);
       expect(options.repos, isEmpty);
-      expect(options.versionIncrement, isNull);
-      expect(options.pana, isTrue);
       expect(maintainer.oceanPath, path.join(workspace.path, '.ocean'));
     });
 
@@ -99,9 +97,6 @@ void main() {
         'gg_*',
         '--repo',
         'helix',
-        '--version-increment',
-        'minor',
-        '--no-pana',
         '--dry-run',
       ]);
       final options = maintainer.options!;
@@ -110,8 +105,6 @@ void main() {
       expect(options.jobs, 8);
       expect(options.orgs, ['ggsuite']);
       expect(options.repos, ['gg_*', 'helix']);
-      expect(options.versionIncrement, 'minor');
-      expect(options.pana, isFalse);
       expect(options.dryRun, isTrue);
     });
 
@@ -194,7 +187,10 @@ void main() {
     test('describes itself', () {
       final command = DoMaintain.example();
       expect(command.name, 'maintain');
-      expect(command.description, contains('publish every changed repo'));
+      expect(
+        command.description,
+        contains('merge every changed repo into main'),
+      );
       expect(command.invocation, contains('gg do maintain (--upgrade-sdk'));
       expect(command.invocation, contains('--nightly'));
       final runner = CommandRunner<void>('gg', 'test')..addCommand(command);

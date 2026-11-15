@@ -30,8 +30,6 @@ void main() {
         expect(options.dryRun, isFalse);
         expect(options.orgs, isEmpty);
         expect(options.repos, isEmpty);
-        expect(options.versionIncrement, isNull);
-        expect(options.pana, isTrue);
       });
 
       test('takes every value', () {
@@ -43,8 +41,6 @@ void main() {
           dryRun: true,
           orgs: ['ggsuite'],
           repos: ['gg_*'],
-          versionIncrement: 'minor',
-          pana: false,
         );
         expect(options.tasks, {MaintainTask.sdk});
         expect(options.runId, 'r');
@@ -53,8 +49,6 @@ void main() {
         expect(options.dryRun, isTrue);
         expect(options.orgs, ['ggsuite']);
         expect(options.repos, ['gg_*']);
-        expect(options.versionIncrement, 'minor');
-        expect(options.pana, isFalse);
       });
     });
 

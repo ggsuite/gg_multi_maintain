@@ -500,10 +500,9 @@ packages:
   helix:
     dependency: "direct dev"
     description:
-      name: helix
-      sha256: ef8f11569ff5d8e3c86b569c7a20598e266ea5d7ae8d8b24d82fbc1ad1c0e43a
-      url: "https://pub.dev"
-    source: hosted
+      path: "../helix"
+      relative: true
+    source: path
     version: "1.14.0"
   http:
     dependency: transitive

@@ -60,9 +60,6 @@ void main() {
   Future<void> apply() =>
       UpgradeDna(shell: shell).apply(directory: dir, ggLog: messages.add);
 
-  final dartTest = path.join('test', 'dna', 'dna_test.dart');
-  final tsTest = path.join('test', 'dna', 'dna.spec.ts');
-
   group('UpgradeDna', () {
     test('example creates an upgrader', () {
       expect(UpgradeDna.example(), isA<UpgradeDna>());
@@ -115,7 +112,6 @@ void main() {
               'dependencies:\n  path: ^1.0.0\n'
               'dev_dependencies:\n  dna_ggsuite: ^1.0.0\n  helix: ^1.0.0\n',
         );
-        write(dartTest, '');
         await apply();
         expect(shell.calls, [
           [
@@ -127,7 +123,7 @@ void main() {
             'helix',
           ],
           ['dart', 'pub', 'upgrade', 'dna_gg', 'dna_readme'],
-          ['dart', 'test', dartTest],
+          ['gg', 'dna', 'upgrade'],
         ]);
         expect(messages, [
           'Upgraded dna_ggsuite, helix.',
@@ -144,11 +140,10 @@ void main() {
               'dev_dependencies:\n  dna_ggsuite: ^1.0.0\n'
               'flutter:\n  uses-material-design: true\n',
         );
-        write(dartTest, '');
         await apply();
         expect(shell.calls, [
           ['flutter', 'pub', 'upgrade', '--major-versions', 'dna_ggsuite'],
-          ['flutter', 'test', dartTest],
+          ['gg', 'dna', 'upgrade'],
         ]);
       });
 
@@ -156,10 +151,10 @@ void main() {
         writeLayers([layer('helix', null)]);
         write('pubspec.yaml', 'name: x\n');
         await apply();
-        expect(shell.calls, isEmpty);
-        expect(messages, [
-          'The repo has no DNA test; the DNA is not regenerated.',
+        expect(shell.calls, [
+          ['gg', 'dna', 'upgrade'],
         ]);
+        expect(messages, ['Regenerated the DNA.']);
       });
 
       test('upgrades the TypeScript layers with pnpm', () async {
@@ -180,7 +175,6 @@ void main() {
           }),
         );
         write('pnpm-lock.yaml', '');
-        write(tsTest, '');
         await apply();
         expect(shell.calls, [
           [
@@ -191,7 +185,7 @@ void main() {
             '@tssuite/helix-js',
             'helix-js',
           ],
-          ['pnpm', 'exec', 'vitest', 'run', tsTest, '--coverage.enabled=false'],
+          ['gg', 'dna', 'upgrade'],
         ]);
         expect(messages, [
           'Upgraded @tssuite/dna-tssuite, @tssuite/helix-js, helix-js.',
@@ -203,7 +197,9 @@ void main() {
         writeLayers([layer('@tssuite/dna-tssuite', 'node')]);
         write('package.json', '{"name": "x"}');
         await apply();
-        expect(shell.calls, isEmpty);
+        expect(shell.calls, [
+          ['gg', 'dna', 'upgrade'],
+        ]);
       });
     });
   });

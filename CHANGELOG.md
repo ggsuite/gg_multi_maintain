@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 - 2026-11-15
+
+### Added
+
+- Add the blog post on gg dna upgrade
+
+### Changed
+
+- Regenerate the DNA with gg dna upgrade
+
 ## 0.1.0 - 2026-11-15
 
 ### Added

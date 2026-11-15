@@ -14,7 +14,7 @@
   // 1-3 bullet points: the problem space.
   "domain": [
     "maintenance runs over the ocean: fresh clone per repo, DAG scheduling, --jobs, --org/--repo filters, --dry-run",
-    "tasks: --upgrade-sdk, --upgrade-deps [--major], --upgrade-dna; --nightly = --upgrade-deps --major",
+    "tasks: --upgrade-sdk, --upgrade-deps [--major], --upgrade-dna (layers, then gg dna upgrade); --nightly = --upgrade-deps --major",
     "summary per outcome; failed repo blocks its dependents; report.txt in the run folder on problems",
   ],
 

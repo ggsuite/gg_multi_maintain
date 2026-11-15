@@ -20,8 +20,9 @@ import '../backend/shell.dart';
 /// The layers are the packages `dna/_generated.json` lists, plus the helix
 /// engine. The direct ones are upgraded across major versions, so a pin like
 /// `^0.1.0` moves on; the ones that only come through another layer are
-/// unlocked as well. Afterwards the repo's own DNA test regenerates the DNA
-/// with the new layers and commits it as `#gg: generated DNA`.
+/// unlocked as well. Afterwards `gg dna upgrade` places the newest DNA
+/// check and regenerates the DNA with the new layers, committed as
+/// `#gg: generated DNA`.
 class UpgradeDna {
   /// Constructor
   const UpgradeDna({this._shell = const Shell()});
@@ -132,26 +133,10 @@ class UpgradeDna {
 
   // ...........................................................................
   Future<void> _regenerate(Directory directory, GgLog ggLog) async {
-    final dartTest = path.join('test', 'dna', 'dna_test.dart');
-    final tsTest = path.join('test', 'dna', 'dna.spec.ts');
-    if (File(path.join(directory.path, dartTest)).existsSync()) {
-      await _shell.run(_isFlutter(directory) ? 'flutter' : 'dart', [
-        'test',
-        dartTest,
-      ], directory: directory);
-    } else if (File(path.join(directory.path, tsTest)).existsSync()) {
-      final vitest = detectTypeScriptPackageManager(directory)
-          .execCommand('vitest', [
-            'run',
-            tsTest,
-            // One test file never meets the coverage thresholds of a repo.
-            '--coverage.enabled=false',
-          ]);
-      await _shell.run(vitest.executable, vitest.args, directory: directory);
-    } else {
-      ggLog('The repo has no DNA test; the DNA is not regenerated.');
-      return;
-    }
+    // `gg dna upgrade` places the newest DNA check — Dart or vitest,
+    // matching the repo — and instantiates the upgraded layers. The DNA
+    // check itself only checks, so it no longer regenerates anything.
+    await _shell.run('gg', ['dna', 'upgrade'], directory: directory);
     ggLog('Regenerated the DNA.');
   }
 

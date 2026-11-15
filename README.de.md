@@ -51,7 +51,7 @@ gg do maintain --all --org ggsuite --dry-run # see what would change
 | `--upgrade-sdk` | Hebt `environment: sdk:` auf das installierte Dart und `engines.node` auf das installierte Node |
 | `--upgrade-deps` | Hebt die Abhängigkeiten auf die neuesten kompatiblen Versionen |
 | `--major` | Mit `--upgrade-deps`: erlaubt Sprünge über Major-Versionen |
-| `--upgrade-dna` | Hebt die DNA-Schichten und die helix-Engine an und erzeugt die DNA neu |
+| `--upgrade-dna` | Hebt die DNA-Schichten und die helix-Engine an und ruft `gg dna upgrade` auf: legt den neuesten DNA-Check ab und erzeugt die DNA neu |
 | `--all` | Alle Aufgaben oben |
 | `--nightly` | Der nächtliche Build: `--upgrade-deps --major`, siehe unten |
 | `-j`, `--jobs` | Wie viele Repos gleichzeitig laufen, Standard 4 |

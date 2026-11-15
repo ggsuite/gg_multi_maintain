@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Regenerate the DNA with gg dna upgrade
+
+--upgrade-dna places the newest DNA check instead of running the DNA test
+
 ## 0.1.0 - 2026-11-15
 
 ### Added

@@ -25,7 +25,7 @@ typedef RepoSelectionResult = ({
 ///
 /// Repos outside `--org` and `--repo` are dropped silently. Test projects,
 /// repos without a remote and repos that publish to no registry are reported
-/// as skipped, because maintaining them would publish nothing.
+/// as skipped: maintenance covers released packages only.
 class RepoSelection {
   /// Constructor
   const RepoSelection({

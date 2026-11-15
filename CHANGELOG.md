@@ -6,6 +6,10 @@
 
 - Add the blog post on merging into main
 
+### Changed
+
+- Describe the merge in the library docs
+
 ### Removed
 
 - Merge maintained repos into main instead of publishing

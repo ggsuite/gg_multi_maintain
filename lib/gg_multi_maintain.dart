@@ -5,7 +5,7 @@
 // found in the LICENSE file in the root of this package.
 
 /// Runs maintenance tasks like SDK, DNA and dependency upgrades in all ocean
-/// repos in parallel and publishes every changed repo.
+/// repos in parallel and merges every changed repo into main.
 library;
 
 export 'src/backend/dag_scheduler.dart';

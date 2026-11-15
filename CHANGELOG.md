@@ -5,11 +5,7 @@
 ### Added
 
 - Add --nightly and a report of a failed run
-
---nightly is --upgrade-deps --major
-A run with a failed or blocked repo writes report.txt
-README: set up the computer of the nightly build
-Add index.jsonc
+- Add the blog post about the nightly build
 
 ## 0.0.2 - 2026-10-28
 

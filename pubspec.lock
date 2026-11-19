@@ -410,21 +410,20 @@ packages:
     source: hosted
     version: "14.4.11"
   gg_one_commit:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: gg_one_commit
-      sha256: "8771cf1ede92410b4551e184cd507c7b399ed252c8b2261c8aaa7f01b00ed3cd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.10.0"
+      path: "../gg_one_commit"
+      relative: true
+    source: path
+    version: "2.10.1"
   gg_one_core:
     dependency: transitive
     description:
       name: gg_one_core
-      sha256: "9177fc932bfb3a8b82fbadde078ace0fe6e560ef90c1b4f966b99558cd76e551"
+      sha256: "5fade9f261d685c7fb5cfefb66bc1106053863cb3cb53ed1b35e5538ba820774"
       url: "https://pub.dev"
     source: hosted
-    version: "2.19.0"
+    version: "2.20.0"
   gg_one_do_publish:
     dependency: transitive
     description:

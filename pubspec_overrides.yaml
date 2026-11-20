@@ -4,5 +4,29 @@
 # change-refs-to-git-feature-branch and change-refs-to-pub-dev
 # remove it again.
 dependency_overrides:
+  gg_args:
+    path: ../gg_args
+  gg_git:
+    path: ../gg_git
+  gg_is_flutter:
+    path: ../gg_is_flutter
+  gg_lang:
+    path: ../gg_lang
+  gg_localize_refs:
+    path: ../gg_localize_refs
+  gg_merge:
+    path: ../gg_merge
+  gg_multi_core:
+    path: ../gg_multi_core
   gg_one_commit:
     path: ../gg_one_commit
+  gg_one_core:
+    path: ../gg_one_core
+  gg_one_do_publish:
+    path: ../gg_one_do_publish
+  gg_process:
+    path: ../gg_process
+  gg_publish:
+    path: ../gg_publish
+  gg_test:
+    path: ../gg_test

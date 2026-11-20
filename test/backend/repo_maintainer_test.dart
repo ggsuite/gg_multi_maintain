@@ -188,18 +188,23 @@ void main() {
         expect(result.step, 'clone');
       });
 
-      test('installs the npm dependencies of a TypeScript repo', () async {
-        final m = maintainer();
-        final repo = repoOf(
-          'is-ready',
-          files: {
-            'package.json': '{"name": "is-ready", "version": "0.1.0"}',
-            '.gitignore': 'node_modules/\n',
-          },
-        );
-        final result = await m.maintain(repo: repo, ggLog: log.add);
-        expect(result.outcome, RepoOutcome.unchanged, reason: result.detail);
-      });
+      test(
+        'installs the npm dependencies of a TypeScript repo',
+        () async {
+          final m = maintainer();
+          final repo = repoOf(
+            'is-ready',
+            files: {
+              'package.json': '{"name": "is-ready", "version": "0.1.0"}',
+              '.gitignore': 'node_modules/\n',
+            },
+          );
+          final result = await m.maintain(repo: repo, ggLog: log.add);
+          expect(result.outcome, RepoOutcome.unchanged, reason: result.detail);
+        },
+        // A real npm install, slow on a busy machine.
+        timeout: const Timeout(Duration(minutes: 2)),
+      );
 
       test('reports the step of a failed merge', () async {
         final m = maintainer(

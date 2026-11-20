@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Install npm dependencies without audit and fund
+
 ## 0.2.0 - 2026-11-15
 
 ### Added

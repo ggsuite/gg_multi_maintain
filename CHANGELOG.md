@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add the blog post on npm install without audit
+
 ### Changed
 
 - Install npm dependencies without audit and fund

@@ -276,8 +276,12 @@ class RepoMaintainer {
       ], directory: dir);
     }
     if (File(path.join(dir.path, 'package.json')).existsSync()) {
-      final pm = detectTypeScriptPackageManager(dir).executable;
-      await _shell.run(pm, ['install'], directory: dir);
+      final pm = detectTypeScriptPackageManager(dir);
+      await _shell.run(pm.executable, [
+        'install',
+        // Audit and funding requests need the registry and can take long.
+        if (pm == TypeScriptPackageManager.npm) ...['--no-audit', '--no-fund'],
+      ], directory: dir);
     }
   }
 

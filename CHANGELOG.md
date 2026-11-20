@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 - 2026-11-20
+
+### Added
+
+- Add the blog post on npm install without audit
+
+### Changed
+
+- Install npm dependencies without audit and fund
+
 ## 0.2.0 - 2026-11-15
 
 ### Added

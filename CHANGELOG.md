@@ -2,17 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+- Blog about the maintenance ticket, German README
+
+Blog post in English and German
+README.de follows README
+
 ### Removed
 
 - Maintain the repos in a normal ticket, add --continue
-
-Run gg do upgrade ocean first, then create the ticket maintain_<run id>
-Add all selected repos with gg do add --no-localize
-Keep the run state in <ticket>/.gg/publish_state.json
---continue [-i <ticket>] goes on with the repos that are not done
-Remove the ticket when green, keep it with report.txt otherwise
-Maintain test projects and private packages too, never publish
---dry-run clones into a temp folder, drop the .maintain folder
 
 ## 0.2.1 - 2026-11-20
 

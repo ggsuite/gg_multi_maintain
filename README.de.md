@@ -15,8 +15,9 @@ bisher: ein Ticket pro Repo, oder ein riesiges Ticket, dessen
 Abhängigkeitshülle jedes Repo mitzog. `gg do maintain` erledigt solche
 Routinearbeit für den ganzen Ocean mit einem Aufruf:
 
-- jedes Repo bekommt einen eigenen frischen Klon und Branch, der Ocean
-  bleibt, wie er ist
+- der Lauf gleicht den Ocean mit `gg do upgrade ocean` ab, legt ein
+  normales Ticket `maintain_<lauf-id>` an und fügt ihm jedes Repo hinzu,
+  ohne die Referenzen zwischen ihnen zu lokalisieren
 - die Repos laufen parallel, aber ein Repo wartet auf die Repos, von
   denen es abhängt, damit kein Repo auf einem kaputten aufsetzt
 - jedes geänderte Repo wird mit allen Prüfungen und Tests von
@@ -27,6 +28,9 @@ Routinearbeit für den ganzen Ocean mit einem Aufruf:
   was irgendwo veröffentlicht wird, läuft über ein normales Ticket und
   sein Review
 - ein scheiterndes Repo hält nur die Repos auf, die von ihm abhängen
+- ein Lauf, der gut ging, entfernt sein Ticket. Ein Lauf mit Problemen
+  behält es: Die gescheiterten Repos werden dort repariert, weiter geht es
+  mit `gg do maintain --continue`
 
 ## Installation
 
@@ -48,6 +52,7 @@ gg do maintain --upgrade-deps                # compatible dependency upgrades
 gg do maintain --upgrade-deps --major        # also across major versions
 gg do maintain --nightly                     # the nightly build
 gg do maintain --all --org ggsuite --dry-run # see what would change
+gg do maintain --continue                    # go on after a failed run
 ```
 
 | Option | Bedeutung |
@@ -60,7 +65,9 @@ gg do maintain --all --org ggsuite --dry-run # see what would change
 | `--nightly` | Der nächtliche Build: `--upgrade-deps --major`, siehe unten |
 | `-j`, `--jobs` | Wie viele Repos gleichzeitig laufen, Standard 4 |
 | `--org`, `--repo` | Begrenzt den Lauf, z. B. `--org tssuite` oder `--repo 'gg_*'` |
-| `-n`, `--dry-run` | Wendet die Aufgaben an und meldet die Änderungen, ohne Commit und Merge |
+| `-n`, `--dry-run` | Wendet die Aufgaben in temporären Klonen an und meldet die Änderungen: kein Ticket, kein Commit, kein Merge |
+| `--continue` | Setzt einen Lauf mit Problemen in seinem Ticket fort; nimmt die Optionen dieses Laufs |
+| `-i`, `--ticket` | Mit `--continue`: das Ticket des Laufs. Standard: das Ticket, in dem der Befehl läuft, sonst das neueste `maintain_*`-Ticket |
 
 Das Beispiel gibt die Hilfe des Befehls aus:
 
@@ -104,10 +111,11 @@ ein Repo veröffentlicht, veröffentlicht dessen Upgrades mit. Ein Repo,
 dessen Prüfungen oder Tests nach dem Upgrade scheitern, wird nicht
 gemerged, und nichts wird darauf
 aufgesetzt: Die Repos, die von ihm abhängen, sind blockiert. Der Lauf
-endet dann mit einem Fehler und schreibt
-`<workspace>/.maintain/<lauf-id>/report.txt`: welches Repo in welchem
-Schritt woran gescheitert ist und wo Klon und Log liegen. Repariert wird
-das Repo in einem Ticket; die nächste Nacht macht dort weiter.
+endet dann mit einem Fehler, behält sein Ticket und schreibt
+`<workspace>/maintain_<lauf-id>/report.txt`: welches Repo in welchem
+Schritt woran gescheitert ist und wo Checkout und Log liegen. Das Repo
+wird im Ticket repariert, danach geht es mit `gg do maintain --continue`
+weiter — oder die nächste Nacht beginnt in einem eigenen Ticket neu.
 
 ### Den Rechner des nächtlichen Builds einrichten
 
@@ -140,19 +148,28 @@ Rechner eines Entwicklers und nicht auf GitHub:
 
 ## Grenzen
 
-- Testprojekte, private Pakete und Repos ohne Remote werden
-  übersprungen. Ein Paket, das nie veröffentlicht wurde, ebenfalls, denn
-  seine erste Version wird von Hand veröffentlicht.
+- Repos ohne Remote werden übersprungen: Es gibt keinen main-Branch, in
+  den gemerged werden könnte. Testprojekte und private Pakete werden wie
+  jedes andere Repo gepflegt — der Lauf veröffentlicht ohnehin nichts.
+- `gg do upgrade ocean` hält den Lauf an, wenn ein Ocean-Repo lokale
+  Arbeit trägt; diese vorher committen, pushen oder verwerfen.
 - Haben sich nur Lock-Dateien oder gg-Zustand in `.gg/` geändert, gilt
   das Repo als unverändert und wird nicht gemerged.
 
 ## So funktioniert es
 
-Jeder Lauf bekommt einen Ordner `<workspace>/.maintain/<lauf-id>/<org>/<repo>`.
-Die Pipeline eines Repos: klonen, überspringen, falls nie
-veröffentlicht, Branch `maintain_<lauf-id>` anlegen, installieren,
-Aufgaben ausführen, Änderungen erkennen, `gg one do commit`,
-`gg one do publish --merge-only`, Klon löschen. Ein gescheiterter Klon bleibt mit seinem Log im Lauf-Ordner.
+Ein Lauf legt mit `gg do create ticket` das Ticket
+`<workspace>/maintain_<lauf-id>` an und fügt jedes ausgewählte Repo mit
+`gg do add --no-localize` hinzu; jedes Repo steht auf dem Branch
+`maintain_<lauf-id>`. Die Pipeline eines Repos: installieren, Aufgaben
+ausführen, Änderungen seit dem Commit erkennen, mit dem der Lauf begann,
+`gg one do commit`, `gg one do publish --merge-only`. Der Zustand des
+Laufs — seine Optionen und wie jedes Repo endete — liegt unter dem
+Schlüssel `maintain` in `<ticket>/.gg/publish_state.json` und wird nach
+jedem Repo gespeichert; `--continue` liest ihn und pflegt jedes Repo, das
+weder gemerged noch unverändert ist, im Checkout des Tickets. Das Log
+eines gescheiterten Repos liegt in
+`<ticket>/.gg/maintain_logs/<org>/<repo>.log`.
 
 ## Status
 

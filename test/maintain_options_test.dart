@@ -52,6 +52,22 @@ void main() {
       });
     });
 
+    test('survives a JSON round trip', () {
+      final options = MaintainOptions.example(
+        tasks: {MaintainTask.dna, MaintainTask.deps},
+        runId: 'r',
+        major: true,
+        jobs: 3,
+        orgs: ['ggsuite'],
+        repos: ['gg_*'],
+      );
+      final json = options.toJson();
+      expect(json['tasks'], ['upgrade-deps', 'upgrade-dna']);
+      final read = MaintainOptions.fromJson(json);
+      expect(read.toJson(), json);
+      expect(read.dryRun, isFalse);
+    });
+
     test('branch carries the run id', () {
       expect(MaintainOptions.example().branch, 'maintain_2026_10_28_074200');
     });

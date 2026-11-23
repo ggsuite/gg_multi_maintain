@@ -58,11 +58,25 @@ class MaintainOptions {
     repos: repos ?? const [],
   );
 
+  /// Reads options [toJson] wrote.
+  factory MaintainOptions.fromJson(Map<String, dynamic> json) =>
+      MaintainOptions(
+        runId: json['runId'] as String,
+        tasks: {
+          for (final flag in (json['tasks'] as List).cast<String>())
+            MaintainTask.values.firstWhere((task) => task.flag == flag),
+        },
+        major: json['major'] as bool,
+        jobs: json['jobs'] as int,
+        orgs: (json['orgs'] as List).cast<String>(),
+        repos: (json['repos'] as List).cast<String>(),
+      );
+
   // ...........................................................................
   /// The tasks to run, at least one.
   final Set<MaintainTask> tasks;
 
-  /// Identifies the run: names the run folder and the feature branch.
+  /// Identifies the run: names the ticket and the feature branch.
   final String runId;
 
   /// Allows major version jumps when upgrading the dependencies.
@@ -71,7 +85,7 @@ class MaintainOptions {
   /// How many repos are maintained at the same time.
   final int jobs;
 
-  /// Applies the tasks, but neither commits nor merges.
+  /// Applies the tasks in temporary clones, but neither commits nor merges.
   final bool dryRun;
 
   /// Limits the run to these organizations; empty means all.
@@ -81,8 +95,21 @@ class MaintainOptions {
   final List<String> repos;
 
   // ...........................................................................
-  /// The feature branch every repo is maintained on.
+  /// The ticket of the run; also the feature branch of every repo.
   String get branch => 'maintain_$runId';
+
+  /// Returns the options as JSON, for `--continue`.
+  Map<String, dynamic> toJson() => {
+    'runId': runId,
+    'tasks': [
+      for (final task in MaintainTask.values)
+        if (tasks.contains(task)) task.flag,
+    ],
+    'major': major,
+    'jobs': jobs,
+    'orgs': orgs,
+    'repos': repos,
+  };
 
   /// The commit and merge message, e.g. »Upgrade the SDK and the DNA«.
   String get message {

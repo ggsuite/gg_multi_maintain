@@ -18,6 +18,14 @@ void main() {
       ]);
       expect(RepoOutcome.failed.title, 'Failed');
     });
+
+    test('is done when merged, unchanged or skipped', () {
+      expect(RepoOutcome.values.where((o) => o.isDone), [
+        RepoOutcome.merged,
+        RepoOutcome.unchanged,
+        RepoOutcome.skipped,
+      ]);
+    });
   });
 
   group('RepoResult', () {
@@ -27,7 +35,7 @@ void main() {
       expect(result.outcome, RepoOutcome.merged);
       expect(result.detail, 'pubspec.yaml');
       expect(result.step, isNull);
-      expect(result.clonePath, isNull);
+      expect(result.checkoutPath, isNull);
       expect(result.logPath, isNull);
     });
 
@@ -37,13 +45,13 @@ void main() {
         outcome: RepoOutcome.failed,
         detail: 'boom',
         step: 'commit',
-        clonePath: 'c',
+        checkoutPath: 'c',
         logPath: 'l',
       );
       expect(result.repo.name, 'x');
       expect(result.outcome, RepoOutcome.failed);
       expect(
-        [result.detail, result.step, result.clonePath, result.logPath],
+        [result.detail, result.step, result.checkoutPath, result.logPath],
         ['boom', 'commit', 'c', 'l'],
       );
     });

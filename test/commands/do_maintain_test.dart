@@ -19,6 +19,17 @@ class _RecordingMaintainer extends Maintainer {
   final bool problems;
   MaintainOptions? options;
   String? oceanPath;
+  Directory? resumed;
+
+  @override
+  Future<MaintainReport> resume({
+    required Directory folder,
+    required String oceanPath,
+    required void Function(String) ggLog,
+  }) async {
+    resumed = folder;
+    return const MaintainReport(results: []);
+  }
 
   @override
   Future<MaintainReport> run({
@@ -139,6 +150,13 @@ void main() {
       );
     });
 
+    test('needs --continue for --ticket', () async {
+      await expectLater(
+        run(['--upgrade-sdk', '-i', 'maintain_1']),
+        usageError('--ticket goes with --continue only'),
+      );
+    });
+
     test('needs a positive number of jobs', () async {
       await expectLater(
         run(['--upgrade-sdk', '--jobs', '0']),
@@ -172,6 +190,59 @@ void main() {
       );
     });
 
+    group('--continue', () {
+      Directory ticket(String name, {bool withState = true}) {
+        final dir = Directory(path.join(workspace.path, name))..createSync();
+        File(path.join(dir.path, 'ticket.json')).writeAsStringSync('{}');
+        if (withState) MaintainState.example().save(dir);
+        return dir;
+      }
+
+      test('takes the ticket of -i', () async {
+        final t = ticket('maintain_1');
+        ticket('maintain_2');
+        await run(['--continue', '-i', 'maintain_1']);
+        expect(maintainer.resumed!.path, t.path);
+        expect(maintainer.options, isNull);
+      });
+
+      test('takes the ticket it runs in', () async {
+        final t = ticket('maintain_1');
+        ticket('maintain_2');
+        final repo = Directory(path.join(t.path, 'gg_a'))..createSync();
+        await run(['--continue'], workingDir: repo.path);
+        expect(maintainer.resumed!.path, t.path);
+      });
+
+      test('else takes the latest maintenance ticket', () async {
+        ticket('maintain_2026_10_01_000000');
+        final latest = ticket('maintain_2026_11_01_000000');
+        ticket('maintain_2026_12_01_000000', withState: false);
+        ticket('other');
+        await run(['--continue']);
+        expect(maintainer.resumed!.path, latest.path);
+      });
+
+      test('needs a run to continue', () async {
+        ticket('maintain_x', withState: false);
+        await expectLater(
+          run(['--continue']),
+          usageError('There is no run of gg do maintain to continue'),
+        );
+        await expectLater(
+          run(['--continue', '-i', 'maintain_x']),
+          usageError('maintain_x is no ticket of gg do maintain'),
+        );
+      });
+
+      test('refuses the options of a new run', () async {
+        await expectLater(
+          run(['--continue', '--upgrade-sdk', '-j', '2']),
+          usageError('drop --upgrade-sdk, --jobs'),
+        );
+      });
+    });
+
     test('example logs nowhere', () async {
       final runner = CommandRunner<void>('gg', 'test')
         ..addCommand(
@@ -193,6 +264,7 @@ void main() {
       );
       expect(command.invocation, contains('gg do maintain (--upgrade-sdk'));
       expect(command.invocation, contains('--nightly'));
+      expect(command.invocation, contains('--continue [-i <ticket>]'));
       final runner = CommandRunner<void>('gg', 'test')..addCommand(command);
       expect(runner.commands['maintain'], command);
     });

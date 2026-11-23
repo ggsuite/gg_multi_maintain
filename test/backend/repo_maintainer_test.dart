@@ -15,22 +15,32 @@ import '../helpers/git_fixture.dart';
 void main() {
   group('RepoMaintainer', () {
     late GitFixture fixture;
-    late Directory runDir;
     late List<String> log;
 
     setUp(() {
       fixture = GitFixture();
-      runDir = Directory(path.join(fixture.root.path, 'run'));
       log = [];
     });
 
-    OceanRepo repoOf(String name, {Map<String, String>? files}) =>
-        OceanRepo.example(
-          name: name,
-          url: fixture.remote(name, files ?? GitFixture.dartPackage(name)),
-        );
+    /// A checkout of a fresh remote [name] on the branch of the run.
+    OceanRepo repoOf(String name, {Map<String, String>? files}) {
+      final url = fixture.remote(name, files ?? GitFixture.dartPackage(name));
+      final dir = Directory(path.join(fixture.root.path, 'run', name));
+      dir.parent.createSync(recursive: true);
+      GitFixture.git(dir.parent, ['clone', '-q', url, name]);
+      GitFixture.git(dir, [
+        'checkout',
+        '-q',
+        '-b',
+        'maintain_2026_10_28_074200',
+      ]);
+      return OceanRepo.example(name: name, url: url, directory: dir);
+    }
 
-    /// A task that changes the pubspec of the clone.
+    String baseOf(OceanRepo repo) =>
+        GitFixture.git(repo.directory, ['rev-parse', 'HEAD']);
+
+    /// A task that changes the pubspec of the checkout.
     Future<void> touchPubspec({
       required Directory directory,
       required void Function(String) ggLog,
@@ -49,42 +59,55 @@ void main() {
     RepoMaintainer maintainer({
       MaintainOptions? options,
       RepoTask? task,
-      IsPublishedStep? isPublished,
       CommitStep? commit,
       MergeStep? merge,
     }) => RepoMaintainer(
       options: options ?? MaintainOptions.example(tasks: {MaintainTask.sdk}),
-      runDir: runDir,
       tasks: {for (final t in MaintainTask.values) t: task ?? noop},
-      isPublished:
-          isPublished ?? ({required directory, required ggLog}) async => true,
       commit:
           commit ??
           ({required directory, required ggLog, required message}) async =>
               log.add('commit: $message'),
       merge:
           merge ??
-          ({required directory, required ggLog, required message}) async =>
-              log.add('merge: $message'),
+          ({
+            required directory,
+            required ggLog,
+            required message,
+            required resume,
+          }) async => log.add('merge: $message${resume ? ', resumed' : ''}'),
+    );
+
+    Future<RepoResult> maintain(
+      RepoMaintainer m,
+      OceanRepo repo, {
+      String? base,
+      String? logPath,
+      bool resume = false,
+    }) => m.maintain(
+      repo: repo,
+      dir: repo.directory,
+      base: base ?? baseOf(repo),
+      ggLog: log.add,
+      logPath: logPath,
+      resume: resume,
     );
 
     group('maintain', () {
-      test('reports an unchanged repo and deletes its clone', () async {
-        final m = maintainer();
+      test('reports an unchanged repo and keeps its checkout', () async {
         final repo = repoOf('gg_a');
-        final result = await m.maintain(repo: repo, ggLog: log.add);
+        final result = await maintain(maintainer(), repo);
         expect(result.outcome, RepoOutcome.unchanged);
         expect(result.detail, '');
-        expect(m.cloneDirOf(repo).existsSync(), isFalse);
+        expect(repo.directory.existsSync(), isTrue);
         expect(log, ['Running --upgrade-sdk ...']);
       });
 
       test('commits and merges a changed repo', () async {
-        final m = maintainer(task: touchPubspec);
         final repo = repoOf('gg_a');
-        final result = await m.maintain(
-          repo: repo,
-          ggLog: log.add,
+        final result = await maintain(
+          maintainer(task: touchPubspec),
+          repo,
           logPath: 'gg_a.log',
         );
         expect(result.outcome, RepoOutcome.merged);
@@ -96,23 +119,15 @@ void main() {
           'commit: Upgrade the SDK',
           'merge: Upgrade the SDK',
         ]);
-        expect(m.cloneDirOf(repo).existsSync(), isFalse);
       });
 
-      test('works on the branch of the run', () async {
-        String? branch;
-        final m = maintainer(
-          task: touchPubspec,
-          commit:
-              ({required directory, required ggLog, required message}) async {
-                branch = GitFixture.git(directory, [
-                  'branch',
-                  '--show-current',
-                ]);
-              },
+      test('resumes the merge when asked to', () async {
+        await maintain(
+          maintainer(task: touchPubspec),
+          repoOf('gg_a'),
+          resume: true,
         );
-        await m.maintain(repo: repoOf('gg_a'), ggLog: log.add);
-        expect(branch, 'maintain_2026_10_28_074200');
+        expect(log.last, 'merge: Upgrade the SDK, resumed');
       });
 
       test('counts commits a task made, like the generated DNA', () async {
@@ -123,9 +138,20 @@ void main() {
             GitFixture.git(directory, ['commit', '-q', '-m', '#gg: DNA']);
           },
         );
-        final result = await m.maintain(repo: repoOf('gg_a'), ggLog: log.add);
+        final result = await maintain(m, repoOf('gg_a'));
         expect(result.outcome, RepoOutcome.merged);
         expect(log, contains('Changed: 1 other file'));
+      });
+
+      test('counts the commits made since the base', () async {
+        final repo = repoOf('gg_a');
+        final base = baseOf(repo);
+        GitFixture.writeFiles(repo.directory, {'fix.md': 'fixed by hand'});
+        GitFixture.git(repo.directory, ['add', '.']);
+        GitFixture.git(repo.directory, ['commit', '-q', '-m', 'Fix']);
+        final result = await maintain(maintainer(), repo, base: base);
+        expect(result.outcome, RepoOutcome.merged);
+        expect(result.detail, '1 other file');
       });
 
       test('only reports the changes with --dry-run', () async {
@@ -139,59 +165,51 @@ void main() {
             GitFixture.writeFiles(directory, {'doc/a.md': 'a'});
           },
         );
-        final repo = repoOf('gg_a');
-        final result = await m.maintain(repo: repo, ggLog: log.add);
+        final result = await maintain(m, repoOf('gg_a'));
         expect(result.outcome, RepoOutcome.changed);
         expect(result.detail, 'pubspec.yaml, 1 other file');
         expect(log, isNot(contains('commit: Upgrade the SDK')));
-        expect(m.cloneDirOf(repo).existsSync(), isFalse);
       });
 
-      test('skips a package that was never published', () async {
-        final m = maintainer(
-          isPublished: ({required directory, required ggLog}) async => false,
-        );
-        final repo = repoOf('gg_a');
-        final result = await m.maintain(repo: repo, ggLog: log.add);
-        expect(result.outcome, RepoOutcome.skipped);
-        expect(result.detail, contains('publish the first version by hand'));
-        expect(m.cloneDirOf(repo).existsSync(), isFalse);
-      });
-
-      test('keeps the clone of a failed step', () async {
+      test('keeps the checkout of a failed step', () async {
         final m = maintainer(
           task: ({required directory, required ggLog}) async =>
               throw Exception('no network'),
         );
         final repo = repoOf('gg_a');
-        final result = await m.maintain(
-          repo: repo,
-          ggLog: log.add,
-          logPath: 'l',
-        );
+        final result = await maintain(m, repo, logPath: 'l');
         expect(result.outcome, RepoOutcome.failed);
         expect(result.step, 'upgrade-sdk');
         expect(result.detail, 'Exception: no network');
-        expect(result.clonePath, m.cloneDirOf(repo).path);
+        expect(result.checkoutPath, repo.directory.path);
         expect(result.logPath, 'l');
-        expect(m.cloneDirOf(repo).existsSync(), isTrue);
+        expect(repo.directory.existsSync(), isTrue);
         expect(log.last, 'Failed to upgrade-sdk: Exception: no network');
       });
 
-      test('fails in the clone step for a wrong url', () async {
-        final m = maintainer();
-        final result = await m.maintain(
-          repo: OceanRepo.example(url: path.join(fixture.root.path, 'none')),
-          ggLog: log.add,
-        );
+      test('refuses a checkout on another branch', () async {
+        final repo = repoOf('gg_a');
+        GitFixture.git(repo.directory, ['checkout', '-q', 'main']);
+        final result = await maintain(maintainer(task: touchPubspec), repo);
         expect(result.outcome, RepoOutcome.failed);
-        expect(result.step, 'clone');
+        expect(result.step, 'check the branch');
+        expect(result.detail, contains('is on »main«'));
+        expect(log, isNot(contains(startsWith('commit'))));
+      });
+
+      test('fails to install the dependencies of a broken pubspec', () async {
+        final repo = repoOf(
+          'gg_a',
+          files: {'pubspec.yaml': 'name: gg_a\nenvironment: nonsense\n'},
+        );
+        final result = await maintain(maintainer(), repo);
+        expect(result.outcome, RepoOutcome.failed);
+        expect(result.step, 'install the dependencies');
       });
 
       test(
         'installs the npm dependencies of a TypeScript repo',
         () async {
-          final m = maintainer();
           final repo = repoOf(
             'is-ready',
             files: {
@@ -199,7 +217,7 @@ void main() {
               '.gitignore': 'node_modules/\n',
             },
           );
-          final result = await m.maintain(repo: repo, ggLog: log.add);
+          final result = await maintain(maintainer(), repo);
           expect(result.outcome, RepoOutcome.unchanged, reason: result.detail);
         },
         // A real npm install, slow on a busy machine.
@@ -213,9 +231,10 @@ void main() {
             required directory,
             required ggLog,
             required message,
+            required resume,
           }) async => throw Exception('refused'),
         );
-        final result = await m.maintain(repo: repoOf('gg_a'), ggLog: (_) {});
+        final result = await maintain(m, repoOf('gg_a'));
         expect(result.outcome, RepoOutcome.failed);
         expect(result.step, 'merge');
       });
@@ -227,9 +246,8 @@ void main() {
           'gg_a',
           files: {...GitFixture.dartPackage('gg_a'), 'old.md': 'old'},
         );
-        final dir = Directory(path.join(fixture.root.path, 'clone'));
-        GitFixture.git(fixture.root, ['clone', '-q', repo.url, dir.path]);
-        final base = GitFixture.git(dir, ['rev-parse', 'HEAD']);
+        final dir = repo.directory;
+        final base = baseOf(repo);
         GitFixture.git(dir, ['mv', 'old.md', 'new.md']);
         GitFixture.writeFiles(dir, {
           'pubspec.lock': 'x',
@@ -251,15 +269,10 @@ void main() {
       expect(RepoMaintainer.summarize(['pubspec.yaml']), 'pubspec.yaml');
     });
 
-    test('example works in the temp folder', () {
-      expect(RepoMaintainer.example().runDir.path, Directory.systemTemp.path);
-    });
-
     test('example only logs', () async {
-      final m = RepoMaintainer.example(runDir: runDir);
+      final m = RepoMaintainer.example();
       expect(m.options.runId, '2026_10_28_074200');
-      final repo = repoOf('gg_a');
-      final result = await m.maintain(repo: repo, ggLog: log.add);
+      final result = await maintain(m, repoOf('gg_a'));
       expect(result.outcome, RepoOutcome.unchanged);
       expect(log, [
         'Running --upgrade-sdk ...',
@@ -273,17 +286,15 @@ void main() {
 
     test('example steps commit and merge', () async {
       final m = RepoMaintainer.example(
-        runDir: runDir,
         tasks: {for (final t in MaintainTask.values) t: touchPubspec},
       );
-      await m.maintain(repo: repoOf('gg_a'), ggLog: log.add);
+      await maintain(m, repoOf('gg_a'));
       expect(log.sublist(log.length - 2), ['commit', 'merge']);
     });
 
     test('creates the real tasks by default', () {
       expect(
-        () =>
-            RepoMaintainer(options: MaintainOptions.example(), runDir: runDir),
+        () => RepoMaintainer(options: MaintainOptions.example()),
         returnsNormally,
       );
     });

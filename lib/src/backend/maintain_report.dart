@@ -48,7 +48,7 @@ class MaintainReport {
 
   // ...........................................................................
   /// Returns the text of the report file a run with problems leaves for the
-  /// developer: what failed in which step, and where clone and log are.
+  /// developer: what failed in which step, and where checkout and log are.
   String text({required String runId}) => [
     'gg do maintain, run $runId',
     '',
@@ -63,7 +63,7 @@ class MaintainReport {
         : '  ${result.repo.key}: ${_firstLine(result)}';
     return [
       head,
-      if (result.clonePath != null) '    clone: ${result.clonePath}',
+      if (result.checkoutPath != null) '    checkout: ${result.checkoutPath}',
       if (result.outcome == RepoOutcome.failed && result.logPath != null)
         '    log:   ${result.logPath}',
     ];

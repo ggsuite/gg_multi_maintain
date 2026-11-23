@@ -41,7 +41,7 @@ void main() {
       );
     });
 
-    Future<RepoSelectionResult> select({
+    RepoSelectionResult select({
       List<String> orgs = const [],
       List<String> repos = const [],
     }) => RepoSelection.example().select(
@@ -54,60 +54,48 @@ void main() {
         key.key: value,
     };
 
-    test('selects the publishable repos of all orgs', () async {
-      final result = await select();
+    test('selects every repo with a remote, private ones too', () {
+      final result = select();
       expect(result.selected.map((r) => r.key), [
         'ggsuite/gg_a',
         'ggsuite/gg_b',
+        'ggsuite/private_app',
+        'ggsuite/testproject_gg_1',
         'tssuite/is-ready',
       ]);
-      expect(skippedOf(result), {
-        'ggsuite/local': 'no remote',
-        'ggsuite/private_app': 'publishes to no registry',
-        'ggsuite/testproject_gg_1': 'a test project',
-      });
+      expect(skippedOf(result), {'ggsuite/local': 'no remote'});
       final first = result.selected.first;
       expect(first.url, 'https://x/ggsuite/gg_a.git');
       expect(first.directory.path, endsWith('gg_a'));
     });
 
-    test('limits to the given orgs', () async {
-      final result = await select(orgs: ['tssuite']);
+    test('limits to the given orgs', () {
+      final result = select(orgs: ['tssuite']);
       expect(result.selected.map((r) => r.key), ['tssuite/is-ready']);
       expect(result.skipped, isEmpty);
     });
 
-    test('matches names and keys with wildcards', () async {
-      expect((await select(repos: ['gg_*'])).selected.map((r) => r.key), [
+    test('matches names and keys with wildcards', () {
+      expect(select(repos: ['gg_*']).selected.map((r) => r.key), [
         'ggsuite/gg_a',
         'ggsuite/gg_b',
       ]);
       expect(
-        (await select(repos: ['ggsuite/gg_b', 'is-*'])).selected
-            .map((r) => r.key),
+        select(repos: ['ggsuite/gg_b', 'is-*']).selected.map((r) => r.key),
         ['ggsuite/gg_b', 'tssuite/is-ready'],
       );
-      expect((await select(repos: ['gg'])).selected, isEmpty);
+      expect(select(repos: ['gg']).selected, isEmpty);
     });
 
-    test('takes the org of a flat repo from its remote', () async {
+    test('takes the org of a flat repo from its remote', () {
       final flat = fixture.oceanRepo(
         '.',
         'flat',
         url: 'https://github.com/rljson/flat.git',
       );
       expect(flat.existsSync(), isTrue);
-      final result = await select(repos: ['flat']);
+      final result = select(repos: ['flat']);
       expect(result.selected.map((r) => r.key), ['rljson/flat']);
-    });
-
-    test('asks the given publish targets', () async {
-      final result = await RepoSelection(publishTargets: (_) async => {})
-          .select(
-            oceanPath: fixture.ocean.path,
-            options: MaintainOptions.example(repos: ['gg_a']),
-          );
-      expect(skippedOf(result), {'ggsuite/gg_a': 'publishes to no registry'});
     });
   });
 }

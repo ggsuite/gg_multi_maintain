@@ -44,7 +44,7 @@ class OceanRepo {
   /// The ocean checkout; only read, never changed.
   final Directory directory;
 
-  /// The remote the fresh clone is made from.
+  /// The remote of the repo.
   final String url;
 
   /// Identifies the repo across organizations, e.g. `ggsuite/gg_json`.

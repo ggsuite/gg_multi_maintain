@@ -9,7 +9,6 @@ import 'dart:io';
 import 'package:gg_lang/gg_lang.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_one/gg_one.dart' as gg;
-import 'package:gg_publish/gg_publish.dart' show IsPublished;
 import 'package:path/path.dart' as path;
 
 import '../maintain_options.dart';
@@ -35,63 +34,53 @@ typedef CommitStep = Future<void> Function({
 });
 
 /// Merges the committed checkout into the main branch without releasing it,
-/// like `gg one do publish --merge-only`.
+/// like `gg one do publish --merge-only`; [resume] continues an unfinished
+/// merge.
 typedef MergeStep = Future<void> Function({
   required Directory directory,
   required GgLog ggLog,
   required String message,
-});
-
-/// Tells whether a package was ever published to its registries.
-typedef IsPublishedStep = Future<bool> Function({
-  required Directory directory,
-  required GgLog ggLog,
+  required bool resume,
 });
 
 // #############################################################################
-/// Maintains one repo in a fresh clone of its own.
+/// Maintains one repo in its checkout of the run.
 ///
-/// The ocean checkout is never touched. Each repo is cloned to
-/// `<run>/<org>/<repo>` and maintained on the run's feature branch:
+/// The checkout sits on the run's feature branch already (see `RepoHost`):
 ///
-/// 1. clone, skip a package that was never published (its first version is
-///    published by hand), create the branch, install the dependencies
+/// 1. make sure the checkout is on that branch, install the dependencies
 /// 2. run the selected tasks: SDK, dependencies, DNA
-/// 3. stop as unchanged when only lock files or gg's own state changed
+/// 3. stop as unchanged when, since the commit the run started from, only
+///    lock files or gg's own state changed
 /// 4. commit with `gg one do commit`, which runs all checks and tests
 /// 5. merge into the main branch with `gg one do publish --merge-only`: no
 ///    version increase, no upload, no tag. The changes wait below
 ///    `## Unreleased` until a ticket releases the repo
 ///
-/// A finished clone is deleted; a failed one is kept for a look.
+/// Every step can run again: a repo that failed is maintained once more in
+/// the same checkout, with what the developer fixed there.
 class RepoMaintainer {
   /// Constructor
   RepoMaintainer({
     required this.options,
-    required this.runDir,
     Shell shell = const Shell(),
     Map<MaintainTask, RepoTask>? tasks,
-    IsPublishedStep? isPublished,
     CommitStep? commit,
     MergeStep? merge,
   }) : _shell = shell,
        _tasks = tasks ?? _defaultTasks(options, shell),
-       _isPublished = isPublished ?? _defaultIsPublished,
        _commit = commit ?? _defaultCommit,
        _merge = merge ?? _defaultMerge;
 
   /// A maintainer whose steps only log.
   factory RepoMaintainer.example({
     MaintainOptions? options,
-    Directory? runDir,
     Shell? shell,
     Map<MaintainTask, RepoTask>? tasks,
-    IsPublishedStep? isPublished,
     CommitStep? commit,
     MergeStep? merge,
   }) => RepoMaintainer(
     options: options ?? MaintainOptions.example(),
-    runDir: runDir ?? Directory.systemTemp,
     shell: shell ?? const Shell(),
     tasks:
         tasks ??
@@ -100,55 +89,56 @@ class RepoMaintainer {
             task: ({required directory, required ggLog}) async =>
                 ggLog(task.flag),
         },
-    isPublished:
-        isPublished ?? ({required directory, required ggLog}) async => true,
     commit:
         commit ??
         ({required directory, required ggLog, required message}) async =>
             ggLog('commit'),
     merge:
         merge ??
-        ({required directory, required ggLog, required message}) async =>
-            ggLog('merge'),
+        ({
+          required directory,
+          required ggLog,
+          required message,
+          required resume,
+        }) async => ggLog('merge'),
   );
 
   // ...........................................................................
   /// What to do.
   final MaintainOptions options;
 
-  /// The folder of this run, `<workspace>/.maintain/<run id>`.
-  final Directory runDir;
-
   // ...........................................................................
-  /// Maintains [repo] and reports how it ended.
+  /// Maintains [repo] in its checkout [dir] and reports how it ended.
+  ///
+  /// [base] is the commit the run started from; [resume] continues a merge
+  /// an earlier run left unfinished.
   Future<RepoResult> maintain({
     required OceanRepo repo,
+    required Directory dir,
+    required String base,
     required GgLog ggLog,
     String? logPath,
+    bool resume = false,
   }) async {
-    final dir = cloneDirOf(repo);
-    var step = 'clone';
-    RepoResult result(RepoOutcome outcome, String detail) => RepoResult(
-      repo: repo,
-      outcome: outcome,
-      detail: detail,
-      logPath: logPath,
-    );
+    var step = 'check the branch';
+    RepoResult result(RepoOutcome outcome, String detail, {String? step}) =>
+        RepoResult(
+          repo: repo,
+          outcome: outcome,
+          detail: detail,
+          step: step,
+          checkoutPath: step == null ? null : dir.path,
+          logPath: logPath,
+        );
 
     try {
-      await _clone(repo, dir);
-      step = 'check the registry';
-      if (!await _isPublished(directory: dir, ggLog: ggLog)) {
-        _delete(dir);
-        return result(
-          RepoOutcome.skipped,
-          'never published, publish the first version by hand',
+      final branch = await _git(dir, ['branch', '--show-current']);
+      if (branch != options.branch) {
+        throw Exception(
+          'The checkout is on »$branch«, not on '
+          '»${options.branch}«.',
         );
       }
-
-      step = 'create the branch';
-      final base = await _git(dir, ['rev-parse', 'HEAD']);
-      await _git(dir, ['checkout', '-b', options.branch]);
       step = 'install the dependencies';
       await _install(dir);
 
@@ -160,40 +150,26 @@ class RepoMaintainer {
 
       step = 'detect the changes';
       final changes = await changesOf(dir, base: base);
-      if (changes.isEmpty) {
-        _delete(dir);
-        return result(RepoOutcome.unchanged, '');
-      }
+      if (changes.isEmpty) return result(RepoOutcome.unchanged, '');
       final summary = summarize(changes);
       ggLog('Changed: $summary');
-      if (options.dryRun) {
-        _delete(dir);
-        return result(RepoOutcome.changed, summary);
-      }
+      if (options.dryRun) return result(RepoOutcome.changed, summary);
 
       step = 'commit';
       await _commit(directory: dir, ggLog: ggLog, message: options.message);
       step = 'merge';
-      await _merge(directory: dir, ggLog: ggLog, message: options.message);
-      _delete(dir);
+      await _merge(
+        directory: dir,
+        ggLog: ggLog,
+        message: options.message,
+        resume: resume,
+      );
       return result(RepoOutcome.merged, summary);
     } catch (e) {
       ggLog('Failed to $step: $e');
-      return RepoResult(
-        repo: repo,
-        outcome: RepoOutcome.failed,
-        detail: '$e',
-        step: step,
-        clonePath: dir.path,
-        logPath: logPath,
-      );
+      return result(RepoOutcome.failed, '$e', step: step);
     }
   }
-
-  // ...........................................................................
-  /// The folder [repo] is cloned to.
-  Directory cloneDirOf(OceanRepo repo) =>
-      Directory(path.join(runDir.path, repo.org, repo.name));
 
   // ...........................................................................
   /// Returns the files that changed in [dir] since the commit [base].
@@ -236,7 +212,6 @@ class RepoMaintainer {
   // ...........................................................................
   final Shell _shell;
   final Map<MaintainTask, RepoTask> _tasks;
-  final IsPublishedStep _isPublished;
   final CommitStep _commit;
   final MergeStep _merge;
 
@@ -250,17 +225,6 @@ class RepoMaintainer {
   // ...........................................................................
   bool _isBookkeeping(String file) =>
       _lockFiles.contains(path.posix.basename(file)) || file.startsWith('.gg/');
-
-  // ...........................................................................
-  Future<void> _clone(OceanRepo repo, Directory dir) async {
-    final parent = dir.parent..createSync(recursive: true);
-    await _shell.run('git', [
-      'clone',
-      '--quiet',
-      repo.url,
-      path.basename(dir.path),
-    ], directory: parent);
-  }
 
   // ...........................................................................
   Future<String> _git(Directory dir, List<String> args) async =>
@@ -286,17 +250,6 @@ class RepoMaintainer {
   }
 
   // ...........................................................................
-  void _delete(Directory dir) {
-    try {
-      dir.deleteSync(recursive: true);
-      // coverage:ignore-start
-    } on FileSystemException {
-      // Windows keeps files open for a moment; the run folder stays then.
-    }
-    // coverage:ignore-end
-  }
-
-  // ...........................................................................
   static Map<MaintainTask, RepoTask> _defaultTasks(
     MaintainOptions options,
     Shell shell,
@@ -308,11 +261,6 @@ class RepoMaintainer {
 
   // ...........................................................................
   // coverage:ignore-start
-  static Future<bool> _defaultIsPublished({
-    required Directory directory,
-    required GgLog ggLog,
-  }) => IsPublished(ggLog: ggLog).get(directory: directory, ggLog: ggLog);
-
   static Future<void> _defaultCommit({
     required Directory directory,
     required GgLog ggLog,
@@ -325,6 +273,7 @@ class RepoMaintainer {
     required Directory directory,
     required GgLog ggLog,
     required String message,
+    required bool resume,
   }) => gg.DoPublish(ggLog: ggLog).get(
     directory: directory,
     ggLog: ggLog,
@@ -333,6 +282,7 @@ class RepoMaintainer {
     deleteFeatureBranch: true,
     askBeforePublishing: false,
     upgrade: false,
+    resume: resume,
   );
   // coverage:ignore-end
 }

@@ -51,7 +51,7 @@ void main() {
       expect(report.hasProblems, isTrue);
     });
 
-    test('shows step, first line, clone and log of a failure', () {
+    test('shows step, first line, checkout and log of a failure', () {
       final report = MaintainReport(
         results: [
           RepoResult(
@@ -59,7 +59,7 @@ void main() {
             outcome: RepoOutcome.failed,
             detail: 'tests failed\nmore',
             step: 'commit',
-            clonePath: 'run/ggsuite/gg_json',
+            checkoutPath: 'run/ggsuite/gg_json',
             logPath: 'run/ggsuite/gg_json.log',
           ),
         ],
@@ -67,7 +67,7 @@ void main() {
       expect(report.lines(), [
         red('Failed (1):'),
         '  ggsuite/gg_json: commit: tests failed',
-        '    clone: run/ggsuite/gg_json',
+        '    checkout: run/ggsuite/gg_json',
         '    log:   run/ggsuite/gg_json.log',
       ]);
     });

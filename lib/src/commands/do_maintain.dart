@@ -10,17 +10,24 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:gg_log/gg_log.dart';
 import 'package:gg_multi_core/gg_multi_core.dart';
+import 'package:path/path.dart' as path;
 
+import '../backend/maintain_state.dart';
 import '../backend/maintainer.dart';
 import '../maintain_options.dart';
 
 // #############################################################################
 /// `gg do maintain`: runs maintenance tasks in all ocean repos.
 ///
-/// At least one task flag is required. Every changed repo is committed and
-/// merged into its main branch with `gg one do publish --merge-only` —
-/// nothing is released. A release goes through a normal ticket and its
-/// review.
+/// At least one task flag is required. The run syncs the ocean, creates the
+/// ticket `maintain_<run id>` with every repo and commits and merges every
+/// changed repo into its main branch with `gg one do publish --merge-only` —
+/// nothing is released to a registry. A release goes through a normal ticket
+/// and its review.
+///
+/// A run with problems keeps its ticket. `--continue` goes on with it after
+/// the failed repos were fixed there: the ticket of `-i`, the ticket the
+/// command runs in, or else the latest maintenance ticket.
 ///
 /// `--nightly` is the run a computer of its own starts every night: it
 /// upgrades the dependencies of every repo across major versions
@@ -62,7 +69,8 @@ class DoMaintain extends Command<void> {
   String get invocation =>
       'gg do maintain '
       '(--upgrade-sdk | --upgrade-deps [--major] | --upgrade-dna | --all | '
-      '--nightly) [options]';
+      '--nightly) [options]\n'
+      '       gg do maintain --continue [-i <ticket>]';
 
   /// The log function.
   final GgLog ggLog;
@@ -70,9 +78,10 @@ class DoMaintain extends Command<void> {
   // ...........................................................................
   @override
   Future<void> run() async {
-    final options = optionsOf(argResults!);
+    final args = argResults!;
+    final workingDir = _workingDir ?? Directory.current.path;
     final oceanPath = WorkspaceUtils.defaultOceanWorkspacePath(
-      workingDir: _workingDir ?? Directory.current.path,
+      workingDir: workingDir,
     );
     if (!Directory(oceanPath).existsSync()) {
       throw UsageException(
@@ -80,19 +89,76 @@ class DoMaintain extends Command<void> {
         usage,
       );
     }
-    final report = await _maintainer.run(
-      oceanPath: oceanPath,
-      options: options,
-      ggLog: ggLog,
-    );
+    final report = args['continue'] as bool
+        ? await _maintainer.resume(
+            folder: ticketToContinue(args, oceanPath, workingDir),
+            oceanPath: oceanPath,
+            ggLog: ggLog,
+          )
+        : await _maintainer.run(
+            oceanPath: oceanPath,
+            options: optionsOf(args),
+            ggLog: ggLog,
+          );
     if (report.hasProblems) {
       throw Exception('Maintenance failed for some repos, see above.');
     }
   }
 
   // ...........................................................................
+  /// Returns the ticket `--continue` goes on with; throws when there is none
+  /// or when other options were given.
+  Directory ticketToContinue(
+    ArgResults args,
+    String oceanPath,
+    String workingDir,
+  ) {
+    final given = args.options.where(
+      (option) => !_continueOptions.contains(option) && args.wasParsed(option),
+    );
+    if (given.isNotEmpty) {
+      throw UsageException(
+        '--continue takes the options of the run it continues, '
+        'drop --${given.join(', --')}.',
+        usage,
+      );
+    }
+    final root = path.dirname(oceanPath);
+    final id = args['ticket'] as String?;
+    if (id != null) {
+      final ticket = WorkspaceUtils.existingTicketDir(
+        rootPath: root,
+        ticketName: id,
+      );
+      if (ticket == null || !MaintainState.existsIn(ticket)) {
+        throw UsageException('$id is no ticket of gg do maintain.', usage);
+      }
+      return ticket;
+    }
+    final current = WorkspaceUtils.detectTicketPath(workingDir);
+    if (current != null && MaintainState.existsIn(Directory(current))) {
+      return Directory(current);
+    }
+    final tickets = WorkspaceUtils.ticketDirs(root).where(
+      (dir) =>
+          path.basename(dir.path).startsWith('maintain_') &&
+          MaintainState.existsIn(dir),
+    );
+    if (tickets.isEmpty) {
+      throw UsageException(
+        'There is no run of gg do maintain to continue.',
+        usage,
+      );
+    }
+    return tickets.last;
+  }
+
+  // ...........................................................................
   /// Turns the parsed arguments into options; throws on a wrong combination.
   MaintainOptions optionsOf(ArgResults args) {
+    if (args.wasParsed('ticket')) {
+      throw UsageException('--ticket goes with --continue only.', usage);
+    }
     final all = args['all'] as bool;
     final nightly = args['nightly'] as bool;
     final tasks = {
@@ -131,6 +197,8 @@ class DoMaintain extends Command<void> {
   final Maintainer _maintainer;
   final String? _workingDir;
   final DateTime Function() _now;
+
+  static const _continueOptions = {'continue', 'ticket'};
 
   // ...........................................................................
   void _addArgs() {
@@ -180,12 +248,26 @@ class DoMaintain extends Command<void> {
             'Repeat for more.',
       )
       ..addFlag(
+        'continue',
+        negatable: false,
+        help:
+            'Go on with a run that had problems, in its ticket, once the '
+            'failed repos are fixed there.',
+      )
+      ..addOption(
+        'ticket',
+        abbr: 'i',
+        help:
+            'With --continue: the ticket of the run. Default: the ticket '
+            'the command runs in, else the latest maintenance ticket.',
+      )
+      ..addFlag(
         'dry-run',
         abbr: 'n',
         negatable: false,
         help:
-            'Apply the tasks in the clones and report what would change, '
-            'but neither commit nor merge.',
+            'Apply the tasks in temporary clones and report what would '
+            'change, but create no ticket and neither commit nor merge.',
       );
   }
 }

@@ -6,7 +6,6 @@
 
 import 'dart:io';
 
-import 'package:gg_lang/gg_lang.dart';
 import 'package:gg_multi_core/gg_multi_core.dart';
 import 'package:path/path.dart' as path;
 
@@ -23,42 +22,36 @@ typedef RepoSelectionResult = ({
 // #############################################################################
 /// Picks the ocean repos `gg do maintain` works on.
 ///
-/// Repos outside `--org` and `--repo` are dropped silently. Test projects,
-/// repos without a remote and repos that publish to no registry are reported
-/// as skipped: maintenance covers released packages only.
+/// Repos outside `--org` and `--repo` are dropped silently. Repos without a
+/// remote are reported as skipped: there is no main branch to merge into.
+/// Test projects and private packages are maintained like every other repo,
+/// maintenance releases nothing.
 class RepoSelection {
   /// Constructor
-  const RepoSelection({
-    Future<Set<PublishTarget>> Function(Directory directory)? publishTargets,
-  }) : _publishTargets = publishTargets ?? publishTargetsOf;
+  const RepoSelection();
 
-  /// A selection that asks the real manifests.
+  /// A selection by organization and name.
   factory RepoSelection.example() => const RepoSelection();
 
   // ...........................................................................
   /// Returns the repos of [oceanPath] that [options] selects.
-  Future<RepoSelectionResult> select({
+  RepoSelectionResult select({
     required String oceanPath,
     required MaintainOptions options,
-  }) async {
+  }) {
     final selected = <OceanRepo>[];
     final skipped = <OceanRepo, String>{};
     for (final dir in RepoFolderResolver.repoDirs(oceanPath)) {
       final repo = _repoOf(dir, oceanPath);
       if (!_matches(repo, options)) continue;
-      final reason = await _skipReason(repo);
-      if (reason == null) {
-        selected.add(repo);
+      if (repo.url.isEmpty) {
+        skipped[repo] = 'no remote';
       } else {
-        skipped[repo] = reason;
+        selected.add(repo);
       }
     }
     return (selected: selected, skipped: skipped);
   }
-
-  // ...........................................................................
-  final Future<Set<PublishTarget>> Function(Directory directory)
-  _publishTargets;
 
   // ...........................................................................
   OceanRepo _repoOf(Directory dir, String oceanPath) {
@@ -91,16 +84,4 @@ class RepoSelection {
   // ...........................................................................
   RegExp _glob(String pattern) =>
       RegExp('^${pattern.split('*').map(RegExp.escape).join('.*')}\$');
-
-  // ...........................................................................
-  Future<String?> _skipReason(OceanRepo repo) async {
-    if (repo.name.startsWith(RegExp('testproject[_-]'))) {
-      return 'a test project';
-    }
-    if (repo.url.isEmpty) return 'no remote';
-    if ((await _publishTargets(repo.directory)).isEmpty) {
-      return 'publishes to no registry';
-    }
-    return null;
-  }
 }

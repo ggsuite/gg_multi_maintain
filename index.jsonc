@@ -13,9 +13,9 @@
 
   // 1-3 bullet points: the problem space.
   "domain": [
-    "maintenance runs over the ocean: fresh clone per repo, DAG scheduling, --jobs, --org/--repo filters, --dry-run",
+    "maintenance runs over the ocean in a normal ticket maintain_<run id>: gg do upgrade ocean, create ticket, add --no-localize; DAG scheduling, --jobs, --org/--repo filters, --dry-run in temp clones",
     "tasks: --upgrade-sdk, --upgrade-deps [--major], --upgrade-dna (layers, then gg dna upgrade); --nightly = --upgrade-deps --major",
-    "summary per outcome; failed repo blocks its dependents; report.txt in the run folder on problems",
+    "summary per outcome; failed repo blocks its dependents; ticket kept with report.txt on problems, removed when green; --continue [-i <ticket>] from the state in <ticket>/.gg/publish_state.json",
   ],
 
   // The repos this one depends on and the repos depending on it.
@@ -24,10 +24,10 @@
     // "<repo-a>": "why / API"
     "uses": {
       "gg_one": "DoUpgradeDeps, DoCommit, DoPublish(mergeOnly) per repo",
-      "gg_multi_core": "WorkspaceUtils: ocean path",
-      "gg_publish": "IsPublished: skip never published packages",
+      "gg_multi_core": "WorkspaceUtils: ocean path, ticket detection",
+      "gg_multi_workspace": "UpdateOceanCommand, TicketCommand, AddCommand, RemoveTicketCommand in-process",
       "gg_local_package_dependencies": "dependency order of the ocean repos",
-      "gg_lang": "publish targets of a repo",
+      "gg_lang": "project type of a repo",
       "gg_process": "processes, FlutterInShellProcessWrapper",
     },
 

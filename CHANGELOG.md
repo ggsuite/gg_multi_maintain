@@ -1,13 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 - 2026-11-23
 
 ### Changed
 
 - Blog about the maintenance ticket, German README
-
-Blog post in English and German
-README.de follows README
 
 ### Removed
 

@@ -412,9 +412,10 @@ packages:
   gg_multi_workspace:
     dependency: "direct main"
     description:
-      path: "../gg_multi_workspace"
-      relative: true
-    source: path
+      name: gg_multi_workspace
+      sha256: d4240bab936729c4748ef37798ce16214fa79e62a23d7df879a366d10130920c
+      url: "https://pub.dev"
+    source: hosted
     version: "4.27.1"
   gg_one:
     dependency: "direct main"

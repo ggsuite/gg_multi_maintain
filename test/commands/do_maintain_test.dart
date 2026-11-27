@@ -139,6 +139,30 @@ void main() {
       expect(maintainer.options!.tasks, MaintainTask.values.toSet());
     });
 
+    test('--run runs a script alone, by its absolute path', () async {
+      File(path.join(workspace.path, 'migrate.dart')).writeAsStringSync('');
+      await run(['--run', 'migrate.dart']);
+      final options = maintainer.options!;
+      expect(options.tasks, isEmpty);
+      expect(options.script, path.join(workspace.path, 'migrate.dart'));
+    });
+
+    test('--run goes with the task flags', () async {
+      final script = File(path.join(workspace.path, 'migrate.sh'))
+        ..writeAsStringSync('');
+      await run(['--upgrade-dna', '--run', script.path]);
+      final options = maintainer.options!;
+      expect(options.tasks, {MaintainTask.dna});
+      expect(options.script, script.path);
+    });
+
+    test('--run needs an existing script', () async {
+      await expectLater(
+        run(['--run', 'missing.dart']),
+        usageError('The script missing.dart does not exist'),
+      );
+    });
+
     test('needs a task', () async {
       await expectLater(run([]), usageError('Choose at least one task'));
     });

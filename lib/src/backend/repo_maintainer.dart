@@ -14,6 +14,7 @@ import 'package:path/path.dart' as path;
 import '../maintain_options.dart';
 import '../tasks/upgrade_deps.dart';
 import '../tasks/upgrade_dna.dart';
+import '../tasks/run_script.dart';
 import '../tasks/upgrade_sdk.dart';
 import 'ocean_repo.dart';
 import 'repo_result.dart';
@@ -49,7 +50,7 @@ typedef MergeStep = Future<void> Function({
 /// The checkout sits on the run's feature branch already (see `RepoHost`):
 ///
 /// 1. make sure the checkout is on that branch, install the dependencies
-/// 2. run the selected tasks: SDK, dependencies, DNA
+/// 2. run the selected tasks: SDK, dependencies, the script, DNA
 /// 3. stop as unchanged when, since the commit the run started from, only
 ///    lock files or gg's own state changed
 /// 4. commit with `gg one do commit`, which runs all checks and tests
@@ -65,10 +66,16 @@ class RepoMaintainer {
     required this.options,
     Shell shell = const Shell(),
     Map<MaintainTask, RepoTask>? tasks,
+    RepoTask? script,
     CommitStep? commit,
     MergeStep? merge,
   }) : _shell = shell,
        _tasks = tasks ?? _defaultTasks(options, shell),
+       _script =
+           script ??
+           (options.script == null
+               ? null
+               : RunScript(script: options.script!, shell: shell).apply),
        _commit = commit ?? _defaultCommit,
        _merge = merge ?? _defaultMerge;
 
@@ -77,11 +84,14 @@ class RepoMaintainer {
     MaintainOptions? options,
     Shell? shell,
     Map<MaintainTask, RepoTask>? tasks,
+    RepoTask? script,
     CommitStep? commit,
     MergeStep? merge,
   }) => RepoMaintainer(
     options: options ?? MaintainOptions.example(),
     shell: shell ?? const Shell(),
+    script:
+        script ?? ({required directory, required ggLog}) async => ggLog('run'),
     tasks:
         tasks ??
         {
@@ -131,6 +141,20 @@ class RepoMaintainer {
           logPath: logPath,
         );
 
+    // A checkout that changed since the base was maintained before: the
+    // script ran already and is not run twice, e.g. by --continue.
+    var scriptRan = false;
+    Future<void> runScript() async {
+      if (options.script == null) return;
+      if (scriptRan) {
+        ggLog('${path.basename(options.script!)} ran already.');
+        return;
+      }
+      step = 'run ${path.basename(options.script!)}';
+      ggLog('Running ${options.script} ...');
+      await _script!(directory: dir, ggLog: ggLog);
+    }
+
     try {
       final branch = await _git(dir, ['branch', '--show-current']);
       if (branch != options.branch) {
@@ -139,14 +163,20 @@ class RepoMaintainer {
           '»${options.branch}«.',
         );
       }
+      if (options.script != null) {
+        scriptRan = (await changesOf(dir, base: base)).isNotEmpty;
+      }
       step = 'install the dependencies';
       await _install(dir);
 
       for (final task in MaintainTask.values.where(options.tasks.contains)) {
+        // The script runs before the DNA, which regenerates on top of it.
+        if (task == MaintainTask.dna) await runScript();
         step = task.flag;
         ggLog('Running --${task.flag} ...');
         await _tasks[task]!(directory: dir, ggLog: ggLog);
       }
+      if (!options.tasks.contains(MaintainTask.dna)) await runScript();
 
       step = 'detect the changes';
       final changes = await changesOf(dir, base: base);
@@ -212,6 +242,7 @@ class RepoMaintainer {
   // ...........................................................................
   final Shell _shell;
   final Map<MaintainTask, RepoTask> _tasks;
+  final RepoTask? _script;
   final CommitStep _commit;
   final MergeStep _merge;
 

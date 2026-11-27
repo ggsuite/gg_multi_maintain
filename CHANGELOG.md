@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.3 - 2026-11-27
+
+### Added
+
+- Add --run to run a script in every repo
+
+### Changed
+
+- Run the script once per repo, document it
+
 ## 0.2.2 - 2026-11-23
 
 ### Changed

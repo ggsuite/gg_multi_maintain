@@ -177,7 +177,7 @@ Vor 1.0 — die Optionen können sich zwischen Minor-Versionen ändern.
 
 ## Mitwirken
 
-Siehe den [Develop Guide](doc/guides/develop-guide.md).
+Siehe den [Develop Guide](doc/en/guides/develop-guide.md).
 
 ## Lizenz
 

@@ -172,7 +172,7 @@ Before 1.0 — the options may change between minor versions.
 
 ## Contributing
 
-See the [Develop Guide](doc/guides/develop-guide.md).
+See the [Develop Guide](doc/en/guides/develop-guide.md).
 
 ## License
 

@@ -141,8 +141,15 @@ class RepoMaintainer {
           logPath: logPath,
         );
 
+    // A checkout that changed since the base was maintained before: the
+    // script ran already and is not run twice, e.g. by --continue.
+    var scriptRan = false;
     Future<void> runScript() async {
       if (options.script == null) return;
+      if (scriptRan) {
+        ggLog('${path.basename(options.script!)} ran already.');
+        return;
+      }
       step = 'run ${path.basename(options.script!)}';
       ggLog('Running ${options.script} ...');
       await _script!(directory: dir, ggLog: ggLog);
@@ -155,6 +162,9 @@ class RepoMaintainer {
           'The checkout is on »$branch«, not on '
           '»${options.branch}«.',
         );
+      }
+      if (options.script != null) {
+        scriptRan = (await changesOf(dir, base: base)).isNotEmpty;
       }
       step = 'install the dependencies';
       await _install(dir);

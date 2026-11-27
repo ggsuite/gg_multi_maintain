@@ -118,6 +118,27 @@ void main() {
         ]);
       });
 
+      test('skips the script in a repo changed since the base', () async {
+        final options = MaintainOptions.example(
+          tasks: {},
+          script: '/x/migrate.dart',
+        );
+        final repo = repoOf('gg_a');
+        final base = baseOf(repo);
+        GitFixture.writeFiles(repo.directory, {'moved.md': 'by the script'});
+        await maintain(
+          maintainer(
+            options: options,
+            script: ({required directory, required ggLog}) async =>
+                ggLog('script ran'),
+          ),
+          repo,
+          base: base,
+        );
+        expect(log, isNot(contains('script ran')));
+        expect(log, contains('migrate.dart ran already.'));
+      });
+
       test('runs the script last without the DNA', () async {
         final options = MaintainOptions.example(
           tasks: {MaintainTask.sdk},

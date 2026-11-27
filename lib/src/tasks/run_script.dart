@@ -18,6 +18,9 @@ import '../backend/shell.dart';
 /// `.js` and `.mjs` with `node`, `.sh` with `bash`, `.ps1` with `pwsh`.
 /// Any other file runs as it is and must be executable. The script fails
 /// the repo by exiting with a code other than 0.
+///
+/// The script runs once per repo: a repo that already changed since the
+/// start of the run, e.g. one that is continued, skips it.
 class RunScript {
   /// Constructor
   const RunScript({required this.script, this._shell = const Shell()});
@@ -37,9 +40,12 @@ class RunScript {
     required Directory directory,
     required GgLog ggLog,
   }) async {
+    if (!File(script).existsSync()) {
+      throw Exception('The script $script does not exist anymore.');
+    }
     final (executable, args) = commandOf(script);
     final output = await _shell.run(executable, args, directory: directory);
-    for (final line in output.trim().split('\n')) {
+    for (final line in output.trim().split(RegExp(r'\r?\n'))) {
       if (line.trim().isNotEmpty) ggLog(line);
     }
   }

@@ -55,6 +55,20 @@ void main() {
         expect(log, ['touched']);
       });
 
+      test('throws when the script is gone', () async {
+        await expectLater(
+          RunScript(script: path.join(dir.path, 'gone.dart'))
+              .apply(directory: dir, ggLog: log.add),
+          throwsA(
+            isA<Exception>().having(
+              (e) => '$e',
+              'message',
+              contains('does not exist anymore'),
+            ),
+          ),
+        );
+      });
+
       test('throws when the script fails', () async {
         final script = File(path.join(dir.path, 'fail.dart'))
           ..writeAsStringSync("import 'dart:io'; void main() => exit(3);");

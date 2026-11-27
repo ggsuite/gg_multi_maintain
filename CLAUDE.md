@@ -40,12 +40,16 @@ under `gg do`.
   Nothing is uploaded, versioned or tagged.
 - **Every repo with a remote takes part**, test projects and private
   packages too; only repos without a remote are skipped.
-- **A task flag is required** for a new run. `--upgrade-sdk`,
-  `--upgrade-deps [--major]`, `--upgrade-dna`, `--all` or `--nightly`
+- **A task flag or `--run <script>` is required** for a new run.
+  `--upgrade-sdk`, `--upgrade-deps [--major]`, `--upgrade-dna`, `--all` or
+  `--nightly`
   (= `--upgrade-deps --major`, the run a computer of its own starts every
   night; combinable with the other task flags). New tasks are a
   `MaintainTask` value plus a `RepoTask` in `RepoMaintainer._defaultTasks`;
   they only change files, the pipeline detects and merges the changes.
+  `--run` is no `MaintainTask`: `MaintainOptions.script` holds its absolute
+  path, `RunScript` runs it before the DNA task (or last without it), so
+  the DNA regenerates on top of what the script changed.
 - **Unchanged is decided by git.** Lock files and `.gg/` do not count.
 
 ## Layout
@@ -59,7 +63,7 @@ under `gg do`.
 - `backend/repo_maintainer.dart` — the pipeline of one repo
 - `backend/repo_selection.dart` — `--org`/`--repo`, skips repos without
   remote
-- `tasks/` — `UpgradeSdk`, `UpgradeDeps`, `UpgradeDna`
+- `tasks/` — `UpgradeSdk`, `UpgradeDeps`, `UpgradeDna`, `RunScript`
 
 ## Follow-ups
 

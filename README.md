@@ -48,6 +48,7 @@ gg do maintain --upgrade-dna                 # the DNA layers, then regenerate
 gg do maintain --upgrade-deps                # compatible dependency upgrades
 gg do maintain --upgrade-deps --major        # also across major versions
 gg do maintain --nightly                     # the nightly build
+gg do maintain --upgrade-dna --run migrate.dart # a script, then the DNA
 gg do maintain --all --org ggsuite --dry-run # see what would change
 gg do maintain --continue                    # go on after a failed run
 ```
@@ -59,6 +60,7 @@ gg do maintain --continue                    # go on after a failed run
 | `--major` | With `--upgrade-deps`: allows major version jumps |
 | `--upgrade-dna` | Upgrades the DNA layers and the helix engine, then runs `gg dna upgrade`: places the newest DNA check and regenerates the DNA |
 | `--all` | All tasks above |
+| `--run <script>` | Runs a script in the root of every repo, after the SDK and the dependencies and before the DNA, so the DNA regenerates on top of it. `.dart` runs with `dart run`, `.js`/`.mjs` with `node`, `.sh` with `bash`, `.ps1` with `pwsh`, anything else as it is. A script that exits with a code other than 0 fails the repo. Alone or together with the task flags; `--all` does not include it |
 | `--nightly` | The nightly build: `--upgrade-deps --major`, see below |
 | `-j`, `--jobs` | How many repos run at the same time, default 4 |
 | `--org`, `--repo` | Limit the run, e.g. `--org tssuite` or `--repo 'gg_*'` |

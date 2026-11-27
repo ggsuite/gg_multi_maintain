@@ -9,7 +9,7 @@
   "name": "gg_multi_maintain",
 
   // 1-2 sentence summary about this repo.
-  "summary": "gg do maintain: SDK, DNA and dependency upgrades in all ocean repos in parallel, dependency order, every changed repo committed and merged into main without a release (gg one do publish --merge-only); --nightly for a nightly build.",
+  "summary": "gg do maintain: SDK, DNA and dependency upgrades and custom scripts (--run) in all ocean repos in parallel, dependency order, every changed repo committed and merged into main without a release (gg one do publish --merge-only); --nightly for a nightly build.",
 
   // 1-3 bullet points: the problem space.
   "domain": [

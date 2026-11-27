@@ -59,11 +59,13 @@ void main() {
     RepoMaintainer maintainer({
       MaintainOptions? options,
       RepoTask? task,
+      RepoTask? script,
       CommitStep? commit,
       MergeStep? merge,
     }) => RepoMaintainer(
       options: options ?? MaintainOptions.example(tasks: {MaintainTask.sdk}),
       tasks: {for (final t in MaintainTask.values) t: task ?? noop},
+      script: script,
       commit:
           commit ??
           ({required directory, required ggLog, required message}) async =>
@@ -94,6 +96,91 @@ void main() {
     );
 
     group('maintain', () {
+      test('runs the script after the SDK and before the DNA', () async {
+        final options = MaintainOptions.example(
+          tasks: {MaintainTask.dna, MaintainTask.sdk},
+          script: '/x/migrate.dart',
+        );
+        final result = await maintain(
+          maintainer(
+            options: options,
+            script: ({required directory, required ggLog}) async =>
+                ggLog('script ran'),
+          ),
+          repoOf('gg_a'),
+        );
+        expect(result.outcome, RepoOutcome.unchanged);
+        expect(log, [
+          'Running --upgrade-sdk ...',
+          'Running /x/migrate.dart ...',
+          'script ran',
+          'Running --upgrade-dna ...',
+        ]);
+      });
+
+      test('runs the script last without the DNA', () async {
+        final options = MaintainOptions.example(
+          tasks: {MaintainTask.sdk},
+          script: '/x/migrate.dart',
+        );
+        await maintain(
+          maintainer(
+            options: options,
+            script: ({required directory, required ggLog}) async {},
+          ),
+          repoOf('gg_a'),
+        );
+        expect(log, [
+          'Running --upgrade-sdk ...',
+          'Running /x/migrate.dart ...',
+        ]);
+      });
+
+      test('commits what the script changed with its name', () async {
+        final options = MaintainOptions.example(
+          tasks: {},
+          script: '/x/migrate.dart',
+        );
+        final result = await maintain(
+          maintainer(options: options, script: touchPubspec),
+          repoOf('gg_a'),
+        );
+        expect(result.outcome, RepoOutcome.merged);
+        expect(log, contains('commit: Run migrate.dart'));
+      });
+
+      test('fails the repo when the script fails', () async {
+        final options = MaintainOptions.example(
+          tasks: {},
+          script: '/x/migrate.dart',
+        );
+        final result = await maintain(
+          maintainer(
+            options: options,
+            script: ({required directory, required ggLog}) async =>
+                throw Exception('broken'),
+          ),
+          repoOf('gg_a'),
+        );
+        expect(result.outcome, RepoOutcome.failed);
+        expect(result.step, 'run migrate.dart');
+      });
+
+      test('runs the script of the options with real processes', () async {
+        final script = File(path.join(fixture.root.path, 'hello.dart'))
+          ..writeAsStringSync("void main() => print('hello');");
+        final options = MaintainOptions.example(tasks: {}, script: script.path);
+        final result = await maintain(
+          RepoMaintainer(
+            options: options,
+            tasks: {for (final t in MaintainTask.values) t: noop},
+          ),
+          repoOf('gg_a'),
+        );
+        expect(result.outcome, RepoOutcome.unchanged);
+        expect(log, contains('hello'));
+      });
+
       test('reports an unchanged repo and keeps its checkout', () async {
         final repo = repoOf('gg_a');
         final result = await maintain(maintainer(), repo);
@@ -282,6 +369,14 @@ void main() {
         'Running --upgrade-dna ...',
         'upgrade-dna',
       ]);
+    });
+
+    test('example logs the script', () async {
+      final m = RepoMaintainer.example(
+        options: MaintainOptions.example(tasks: {}, script: '/x/m.dart'),
+      );
+      await maintain(m, repoOf('gg_a'));
+      expect(log, ['Running /x/m.dart ...', 'run']);
     });
 
     test('example steps commit and merge', () async {

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add --run to run a script in every repo
+
+The script runs after the SDK and the dependencies and before the DNA
+The interpreter follows the extension: dart, node, bash, pwsh
+
 ## 0.2.2 - 2026-11-23
 
 ### Changed

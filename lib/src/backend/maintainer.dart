@@ -318,10 +318,12 @@ class Maintainer {
     GgLog ggLog, {
     required bool resume,
   }) {
-    final flags = MaintainTask.values
-        .where(options.tasks.contains)
-        .map((task) => '--${task.flag}')
-        .join(' ');
+    final flags = [
+      ...MaintainTask.values
+          .where(options.tasks.contains)
+          .map((task) => '--${task.flag}'),
+      if (options.script != null) '--run ${options.script}',
+    ].join(' ');
     final verb = options.dryRun
         ? 'Trying'
         : resume

@@ -29,6 +29,10 @@ import '../maintain_options.dart';
 /// the failed repos were fixed there: the ticket of `-i`, the ticket the
 /// command runs in, or else the latest maintenance ticket.
 ///
+/// `--run <script>` runs a script in the root of every repo, e.g. a
+/// migration. It runs after the SDK and the dependencies and before the DNA,
+/// alone or together with the task flags.
+///
 /// `--nightly` is the run a computer of its own starts every night: it
 /// upgrades the dependencies of every repo across major versions
 /// (`--upgrade-deps --major`). A repo that breaks stops the repos that
@@ -69,7 +73,7 @@ class DoMaintain extends Command<void> {
   String get invocation =>
       'gg do maintain '
       '(--upgrade-sdk | --upgrade-deps [--major] | --upgrade-dna | --all | '
-      '--nightly) [options]\n'
+      '--nightly | --run <script>) [options]\n'
       '       gg do maintain --continue [-i <ticket>]';
 
   /// The log function.
@@ -166,11 +170,12 @@ class DoMaintain extends Command<void> {
         if (all || args[task.flag] as bool) task,
       if (nightly) MaintainTask.deps,
     };
-    if (tasks.isEmpty) {
+    final script = scriptOf(args);
+    if (tasks.isEmpty && script == null) {
       throw UsageException(
         'Choose at least one task: '
         '${MaintainTask.values.map((t) => '--${t.flag}').join(', ')}, '
-        '--all or --nightly.',
+        '--all, --nightly or --run.',
         usage,
       );
     }
@@ -190,7 +195,23 @@ class DoMaintain extends Command<void> {
       dryRun: args['dry-run'] as bool,
       orgs: args['org'] as List<String>,
       repos: args['repo'] as List<String>,
+      script: script,
     );
+  }
+
+  // ...........................................................................
+  /// The absolute path of the `--run` script, or null; throws when the file
+  /// does not exist.
+  String? scriptOf(ArgResults args) {
+    final given = args['run'] as String?;
+    if (given == null) return null;
+    final script = path.normalize(
+      path.absolute(_workingDir ?? Directory.current.path, given),
+    );
+    if (!File(script).existsSync()) {
+      throw UsageException('The script $given does not exist.', usage);
+    }
+    return script;
   }
 
   // ...........................................................................
@@ -230,6 +251,16 @@ class DoMaintain extends Command<void> {
         help:
             'The nightly build: --upgrade-deps --major. A repo that breaks '
             'stops its dependents; the run folder gets a report.txt.',
+      )
+      ..addOption(
+        'run',
+        valueHelp: 'script',
+        help:
+            'Run this script in the root of every repo, after the SDK and '
+            'the dependencies and before the DNA. .dart runs with dart run, '
+            '.js with node, .sh with bash, .ps1 with pwsh, anything else as '
+            'it is. A script that exits with a code other than 0 fails the '
+            'repo.',
       )
       ..addOption(
         'jobs',

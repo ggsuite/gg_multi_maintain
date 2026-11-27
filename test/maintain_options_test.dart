@@ -30,6 +30,7 @@ void main() {
         expect(options.dryRun, isFalse);
         expect(options.orgs, isEmpty);
         expect(options.repos, isEmpty);
+        expect(options.script, isNull);
       });
 
       test('takes every value', () {
@@ -41,7 +42,9 @@ void main() {
           dryRun: true,
           orgs: ['ggsuite'],
           repos: ['gg_*'],
+          script: '/x/migrate.dart',
         );
+        expect(options.script, '/x/migrate.dart');
         expect(options.tasks, {MaintainTask.sdk});
         expect(options.runId, 'r');
         expect(options.major, isTrue);
@@ -66,6 +69,13 @@ void main() {
       final read = MaintainOptions.fromJson(json);
       expect(read.toJson(), json);
       expect(read.dryRun, isFalse);
+      expect(json.containsKey('script'), isFalse);
+    });
+
+    test('keeps the script in the JSON', () {
+      final options = MaintainOptions.example(script: '/x/migrate.dart');
+      final read = MaintainOptions.fromJson(options.toJson());
+      expect(read.script, '/x/migrate.dart');
     });
 
     test('branch carries the run id', () {
@@ -84,6 +94,23 @@ void main() {
         expect(
           messageOf({MaintainTask.dna, MaintainTask.sdk}),
           'Upgrade the SDK and the DNA',
+        );
+      });
+
+      test('names the script after the tasks', () {
+        expect(
+          MaintainOptions.example(
+            tasks: {MaintainTask.dna},
+            script: '/x/migrate.dart',
+          ).message,
+          'Upgrade the DNA and run migrate.dart',
+        );
+      });
+
+      test('names the script alone', () {
+        expect(
+          MaintainOptions.example(tasks: {}, script: '/x/migrate.dart').message,
+          'Run migrate.dart',
         );
       });
 
